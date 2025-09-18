@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <title>Unified Trainer Feedback Report Generator</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="final_style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- Add Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+
+
+</head>
+
+<body>
+
+
+    <header class="header">
+        <h1>Trainer Feedback Report Generator</h1>
+        <div class="header-right">
+            
+            <button id="logoutBtn" class="logout-btn">Sign Out</button>
+        </div>
+    </header>
+
+    <div id="dashboardPage">
+        <p style="text-align: center; font-size: 16px; color: #666; margin-bottom: 30px;">
+            Upload Excel file and the system will generate appropriate trainer reports.
+        </p>
+
+        <div class="dashboard-layout">
+            <!-- File Upload Section -->
+            <div class="upload-section">
+                <h3><i class="fa-solid fa-upload"></i> File Upload</h3>
+
+                <div class="file-drop-zone" onclick="document.getElementById('fileInput').click()">
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                    <div class="drop-text">Drop your Excel file here</div>
+                    <p>or <strong>click to browse</strong></p>
+                    <div class="support-text">Supports .xlsx and .xls files</div>
+                </div>
+
+                <input type="file" id="fileInput" accept=".xlsx, .xls" />
+
+                <div id="fileAnalysis" class="hidden">
+                    <div id="fileInfoDisplay" class="file-info"></div>
+
+
+                    <div id="type1Section" class="hidden">
+
+                    </div>
+
+
+                    <div id="type2Section" class="hidden trainer-input-section">
+                        <h3><i class="fa-solid fa-user"></i> Select Trainer</h3>
+                        <p class="subtext">Choose a trainer from the list below or edit trainers if needed.</p>
+
+                        <div class="form-group">
+                            <label for="trainerNameSelect">Trainer Name:</label>
+                            <select id="trainerNameSelect"></select>
+                        </div>
+
+                        <button onclick="openTrainerModal()" class="secondary-btn">
+                            <i class="fa-solid fa-edit"></i> Manage Trainers
+                        </button>
+                    </div>
+
+
+
+
+                    <div style="margin-top: 20px;">
+                        <button onclick="generateReports()" id="generateBtn">
+                            Generate Reports
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="questions-section">
+                <h3><i class="fa-solid fa-list-check"></i> Questions</h3>
+                <ol id="questionList"></ol>
+                <button onclick="openModal()">
+                    <i class="fa-solid fa-edit"></i> Edit Questions
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reports Page -->
+    <div id="reportPage" class="hidden">
+        <button onclick="goBack()"><i class="fa-solid fa-arrow-left"></i> Go Back</button>
+        <div id="output"></div>
+        <div class="bulk-actions">
+            <button onclick="downloadAllReports()">
+                <i class="fa-solid fa-file-pdf"></i> Download All Reports (PDF)
+            </button>
+        </div>
+
+    </div>
+
+    <!-- Modal for editing questions -->
+    <div id="questionModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2><i class="fa-solid fa-edit"></i> Edit Questions</h2>
+            <div id="questionInputs"></div>
+            <button onclick="addQuestion()">
+                <i class="fa-solid fa-plus"></i> Add Question
+            </button><br><br>
+            <button onclick="saveQuestions()">
+                <i class="fa-solid fa-save"></i> Save
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal for editing trainers -->
+    <div id="trainerModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeTrainerModal()">&times;</span>
+            <h2><i class="fa-solid fa-user"></i> Edit Trainers</h2>
+            <div id="trainerInputs"></div>
+            <button onclick="addTrainer()">
+                <i class="fa-solid fa-plus"></i> Add Trainer
+            </button><br><br>
+            <button onclick="saveTrainers()">
+                <i class="fa-solid fa-save"></i> Save
+            </button>
+        </div>
+    </div>
+
+
+    <div id="loading">
+        <div class="spinner"></div>
+        <div>Loading Questions...</div>
+    </div>
+
+
+
+
+    <script type="module" src="final_index.js"></script>
+
+</body>
+
+
+<!-- AIzaSyAIjhn5kPPAYRjPrhZy2f8moH6ozfUaR2o -->
