@@ -511,3 +511,73 @@ html, body {
     background: linear-gradient(135deg, #5a6268, #444c54);
 }
 
+.trainer-filter-section {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.filter-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.filter-container label {
+    font-weight: 600;
+    color: #333;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+.filter-container label i {
+    color: #4A90E2;
+}
+
+#trainerFilter {
+    flex: 1;
+    max-width: 400px;
+    padding: 10px 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 15px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+#trainerFilter:hover {
+    border-color: #4A90E2;
+}
+
+#trainerFilter:focus {
+    outline: none;
+    border-color: #4A90E2;
+    box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+}
+
+/* Responsive design for filter */
+@media (max-width: 768px) {
+    .filter-container {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    #trainerFilter {
+        max-width: 100%;
+    }
+}
+
+/* Hide reports smoothly */
+.report {
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.report[style*="display: none"] {
+    opacity: 0;
+    transform: translateY(-10px);
+}
