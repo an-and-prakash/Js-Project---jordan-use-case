@@ -9,6 +9,7 @@ import {
   ref,
   get,
   set,
+  push,
   child,
 } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
 
@@ -558,6 +559,10 @@ async function generateSingleTrainerReport(trainerName) {
     .finally(() => {
       hideLoading();
     });
+
+    
+
+    addSaveButtonToReportPage()
 }
 
 async function generateMultipleTrainerReports() {
@@ -676,6 +681,7 @@ async function generateMultipleTrainerReports() {
 
   document.getElementById("dashboardPage").classList.add("hidden");
   document.getElementById("reportPage").classList.remove("hidden");
+  addSaveButtonToReportPage()
 }
 
 function createTrainerFilterDropdown(trainerNames) {
@@ -892,9 +898,11 @@ function generateReport(trainerName, columns, commentsWell, commentsImprove) {
   }
 }
 
+
 function goBack() {
-  document.getElementById("reportPage").classList.add("hidden");
-  document.getElementById("dashboardPage").classList.remove("hidden");
+    localStorage.removeItem("viewReportId"); // Clear any stored report ID
+    document.getElementById("reportPage").classList.add("hidden");
+    document.getElementById("dashboardPage").classList.remove("hidden");
 }
 
 async function downloadPDF(button) {
@@ -1039,6 +1047,200 @@ async function downloadAllReports() {
 }
 
 loadTrainers();
+
+// Add these functions to your final_index.js file
+
+// Global variable to store current report data
+let currentReportData = null;
+
+// Function to prepare report data structure
+function prepareReportData() {
+    const reports = [];
+    const reportDivs = document.querySelectorAll(".report");
+    
+    reportDivs.forEach(reportDiv => {
+        const reportContent = reportDiv.querySelector(".report-content");
+        const trainerName = reportContent.querySelector("h2").textContent
+            .replace("ILP - Tech Fundamentals Feedback — ", "").trim();
+        
+        // Extract meta information
+        const metaDiv = reportContent.querySelector(".meta");
+        const metaDivs = metaDiv.querySelectorAll("div");
+        
+        let batchName = "";
+        let traineeCount = 0;
+        let overallRating = "";
+        
+        metaDivs.forEach(div => {
+            const text = div.textContent;
+            if (text.includes("Batch Name:")) {
+                batchName = text.replace("Batch Name:", "").trim();
+            } else if (text.includes("Total Trainee Count:")) {
+                traineeCount = parseInt(text.replace("Total Trainee Count:", "").trim());
+            } else if (text.includes("Overall Program Rating")) {
+                overallRating = text.split(":")[1].trim();
+            }
+        });
+        
+        // Extract table data
+        const table = reportContent.querySelector("table");
+        const tableData = [];
+        const rows = table.querySelectorAll("tr");
+        
+        rows.forEach((row, index) => {
+            if (index === 0) return; // Skip header
+            const cells = row.querySelectorAll("td");
+            if (cells.length > 0) {
+                tableData.push({
+                    category: cells[0].textContent.trim(),
+                    excellent: parseInt(cells[1].textContent),
+                    veryGood: parseInt(cells[2].textContent),
+                    good: parseInt(cells[3].textContent),
+                    average: parseInt(cells[4].textContent),
+                    veryPoor: parseInt(cells[5].textContent),
+                    total: parseInt(cells[6].textContent)
+                });
+            }
+        });
+        
+        // Extract comments
+        const sections = reportContent.querySelectorAll(".section");
+        let commentsWell = [];
+        let commentsImprove = [];
+        let studentsWithPoorRatings = [];
+        
+        sections.forEach(section => {
+            const heading = section.querySelector("h3").textContent;
+            const items = section.querySelectorAll("li");
+            
+            if (heading.includes("What went well")) {
+                commentsWell = Array.from(items).map(li => li.textContent);
+            } else if (heading.includes("What needs improvement")) {
+                commentsImprove = Array.from(items).map(li => li.textContent);
+            } else if (heading.includes("Very Poor")) {
+                studentsWithPoorRatings = Array.from(items).map(li => li.textContent);
+            }
+        });
+        
+        reports.push({
+            trainerName,
+            batchName,
+            traineeCount,
+            overallRating,
+            tableData,
+            commentsWell,
+            commentsImprove,
+            studentsWithPoorRatings
+        });
+    });
+    
+    return reports;
+}
+
+// Open save report modal
+function openSaveReportModal() {
+    currentReportData = prepareReportData();
+    document.getElementById("saveReportModal").style.display = "flex";
+    document.getElementById("reportName").value = "";
+}
+
+// Close save report modal
+function closeSaveReportModal() {
+    document.getElementById("saveReportModal").style.display = "none";
+    currentReportData = null;
+}
+
+// Save report to Firebase
+async function saveReportToHistory() {
+    const reportName = document.getElementById("reportName").value.trim();
+    
+    if (!reportName) {
+        showMessage("error", "Please enter a report name");
+        return;
+    }
+    
+    if (!currentReportData || currentReportData.length === 0) {
+        showMessage("error", "No report data to save");
+        return;
+    }
+    
+    try {
+        showLoading("Saving report...");
+        
+        const timestamp = Date.now();
+        const date = new Date(timestamp);
+        const formattedDate = date.toLocaleDateString('en-IN', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+        });
+        const formattedTime = date.toLocaleTimeString('en-IN', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
+        
+        const reportType = fileType === 'single_trainer' ? 'Single Trainer' : 'Multiple Trainers';
+        
+        const historyEntry = {
+            reportName,
+            reportType,
+            timestamp,
+            date: formattedDate,
+            time: formattedTime,
+            reports: currentReportData,
+            questionsUsed: [...questions], // Save questions used at time of generation
+            fileInfo: {
+                traineeCount: excelRows.length,
+                trainerCount: currentReportData.length
+            }
+        };
+        
+        // Save to Firebase
+        const historyRef = ref(db, "history");
+        const newReportRef = push(historyRef);
+        await set(newReportRef, historyEntry);
+        
+        showMessage("success", `Report "${reportName}" saved successfully!`);
+        closeSaveReportModal();
+        hideLoading();
+        
+    } catch (error) {
+        console.error("Error saving report:", error);
+        showMessage("error", "Failed to save report. Please try again.");
+        hideLoading();
+    }
+}
+
+// Update the report page to include Save button
+// Modify your existing code where you create the report page buttons
+// Add this after the "Go Back" button in the reportPage div:
+
+function addSaveButtonToReportPage() {
+    const reportPage = document.getElementById("reportPage");
+    const existingSaveBtn = document.getElementById("saveReportBtn");
+    
+    if (!existingSaveBtn) {
+        const backButton = reportPage.querySelector('button[onclick="goBack()"]');
+        const saveButton = document.createElement("button");
+        saveButton.id = "saveReportBtn";
+        saveButton.onclick = openSaveReportModal;
+        saveButton.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Report';
+        saveButton.style.marginLeft = "10px";
+        backButton.after(saveButton);
+    }
+}
+
+// Call this function after generating reports
+// Add this line at the end of both generateSingleTrainerReport and generateMultipleTrainerReports:
+// addSaveButtonToReportPage();
+
+
+// Make functions globally accessible
+window.openSaveReportModal = openSaveReportModal;
+window.closeSaveReportModal = closeSaveReportModal;
+window.saveReportToHistory = saveReportToHistory;
+window.addSaveButtonToReportPage = addSaveButtonToReportPage;
 
 window.generateReports = generateReports;
 window.goBack = goBack;

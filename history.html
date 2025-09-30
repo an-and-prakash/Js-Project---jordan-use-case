@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <title>Report History - Trainer Feedback</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="history_style.css">
+</head>
+
+<body>
+    <header class="header">
+        <h1><i class="fa-solid fa-clock-rotate-left"></i> Report History</h1>
+        <div class="header-right">
+            <button onclick="window.location.href='desg.html'" class="back-home-btn">
+                <i class="fa-solid fa-home"></i> Back to Home
+            </button>
+            <button id="logoutBtn" class="logout-btn">
+                <i class="fa-solid fa-sign-out-alt"></i> Sign Out
+            </button>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="page-intro">
+            <i class="fa-solid fa-folder-open" style="font-size: 24px; color: #007bff; margin-right: 8px;"></i>
+            <p>View and manage your previously saved feedback reports</p>
+        </div>
+
+        <div class="controls">
+            <div class="search-box">
+                <i class="fa-solid fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Search by report name or trainer...">
+            </div>
+            <div class="filter-box">
+                <label for="typeFilter"><i class="fa-solid fa-filter"></i> Filter by Type:</label>
+                <select id="typeFilter" onchange="filterHistory()">
+                    <option value="all">All Types</option>
+                    <option value="Single Trainer">Single Trainer</option>
+                    <option value="Multiple Trainers">Multiple Trainers</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="loading" class="loading-spinner">
+            <div class="spinner"></div>
+            <div>Loading history...</div>
+        </div>
+
+        <div id="historyTableContainer">
+            <table id="historyTable">
+                <thead>
+                    <tr>
+                        <th> Report Name</th>
+                        <th></i> Date</th>
+                        <th> Time</th>
+                        <th> Type</th>
+                        <th></i> Trainers</th>
+                        <th> Trainees</th>
+                        <th> Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="historyTableBody">
+                    <!-- History rows will be populated here -->
+                </tbody>
+            </table>
+            
+            <div id="emptyState" class="empty-state hidden">
+                <i class="fa-solid fa-folder-open"></i>
+                <h3>No Reports Found</h3>
+                <p>You haven't saved any reports yet. Generate and save reports from the main page.</p>
+                <!-- <button onclick="window.location.href='desg.html'">
+                    <i class="fa-solid fa-plus"></i> Create New Report
+                </button> -->
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="history.js"></script>
+</body>
+
+</html>

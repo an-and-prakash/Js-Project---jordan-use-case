@@ -14,11 +14,9 @@
       measurementId: "G-0SCRHVW7Y1"
     };
 
-    // Initialize Firebase
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
 
-    // ✅ Auto redirect if user is already signed in
     onAuthStateChanged(auth, (user) => {
       if (user) {
         console.log("Already signed in as:", user.email);
@@ -26,7 +24,6 @@
       }
     });
 
-    // ✅ Login function
     window.login = function () {
       const email = document.getElementById("username").value.trim();
       const password = document.getElementById("password").value.trim();
@@ -55,7 +52,7 @@
           successMsg.style.display = "block";
           btn.textContent = "Redirecting...";
           setTimeout(() => {
-            window.location.href = "combied.html";
+            window.location.href = "desg.html";
           }, 1200);
         })
         .catch((error) => {
