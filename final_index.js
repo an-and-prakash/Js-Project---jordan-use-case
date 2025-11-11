@@ -26,7 +26,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getDatabase(app); // <-- now app exists
+const db = getDatabase(app); 
 
 let questions = [];
 
@@ -85,8 +85,8 @@ document.getElementById("logoutBtn").addEventListener("click", () => {
 let excelRows = [];
 let fileType = null; // 'multiple_trainers' or 'single_trainer'
 let detectedTrainers = [];
-// Global variable to store students with very poor ratings for each trainer
-let studentsWithVeryPoorRatings = {};
+// Global variable to store Trainees with very poor ratings for each trainer
+let TraineesWithVeryPoorRatings = {};
 
 // let questions = [
 //     "The trainer provided me adequate opportunity to ask questions/clarify the concepts",
@@ -270,10 +270,10 @@ function showMessage(type, message) {
   //   }
 }
 
-function getStudentsWithVeryPoorRating(trainerName, columns) {
+function getTraineesWithVeryPoorRating(trainerName, columns) {
   const emailKey = findEmailColumn();
   const nameKey = findNameColumn();
-  const studentsWithVeryPoor = [];
+  const TraineesWithVeryPoor = [];
 
   excelRows.forEach((row, index) => {
     let hasVeryPoorRating = false;
@@ -287,10 +287,10 @@ function getStudentsWithVeryPoorRating(trainerName, columns) {
 
     if (hasVeryPoorRating) {
       const email = emailKey ? row[emailKey] : "";
-      const name = nameKey ? row[nameKey] : `Student ${index + 1}`;
+      const name = nameKey ? row[nameKey] : `Trainee ${index + 1}`;
 
       if (email && email.trim()) {
-        studentsWithVeryPoor.push({
+        TraineesWithVeryPoor.push({
           name: name || "Unknown",
           email: email.trim(),
         });
@@ -298,7 +298,7 @@ function getStudentsWithVeryPoorRating(trainerName, columns) {
     }
   });
 
-  return studentsWithVeryPoor;
+  return TraineesWithVeryPoor;
 }
 
 function findEmailColumn() {
@@ -321,14 +321,14 @@ function findNameColumn() {
 }
 
 function openOutlookWebWithEmails(trainerName) {
-  const students = studentsWithVeryPoorRatings[trainerName] || [];
+  const Trainees = TraineesWithVeryPoorRatings[trainerName] || [];
 
-  if (students.length === 0) {
-    alert('No students with "Very Poor" ratings found for this trainer.');
+  if (Trainees.length === 0) {
+    alert('No Trainees with "Very Poor" ratings found for this trainer.');
     return;
   }
 
-  const emails = students.map((student) => student.email).join(";");
+  const emails = Trainees.map((Trainee) => Trainee.email).join(";");
   const subject = encodeURIComponent(
     `Follow-up: Training Feedback - ${trainerName}`
   );
@@ -345,16 +345,16 @@ function openOutlookWebWithEmails(trainerName) {
 
 // Function to copy emails to clipboard
 function copyEmailsToClipboard(trainerName) {
-  const students = studentsWithVeryPoorRatings[trainerName] || [];
+  const Trainees = TraineesWithVeryPoorRatings[trainerName] || [];
 
-  if (students.length === 0) {
-    alert('No students with "Very Poor" ratings found for this trainer.');
+  if (Trainees.length === 0) {
+    alert('No Trainees with "Very Poor" ratings found for this trainer.');
     return;
   }
 
-  const emailList = students
-    .map((student) => `${student.name} <${student.email}>`)
-    .join("\n");
+  const emailList = Trainees.map(
+    (Trainee) => `${Trainee.name} <${Trainee.email}>`
+  ).join("\n");
 
   navigator.clipboard
     .writeText(emailList)
@@ -442,7 +442,7 @@ function generateReports() {
   }
 
   // Clear previous data
-  studentsWithVeryPoorRatings = {};
+  TraineesWithVeryPoorRatings = {};
 
   if (fileType === "single_trainer") {
     const trainerName = document.getElementById("trainerNameSelect").value;
@@ -473,12 +473,12 @@ async function generateSingleTrainerReport(trainerName) {
   // Find rating columns (exclude metadata columns)
   const ratingColumns = headers.slice(7, headers.length - 4);
 
-  // Get students with very poor ratings for this trainer
-  const studentsWithVeryPoor = getStudentsWithVeryPoorRating(
+  // Get Trainees with very poor ratings for this trainer
+  const TraineesWithVeryPoor = getTraineesWithVeryPoorRating(
     trainerName,
     ratingColumns
   );
-  studentsWithVeryPoorRatings[trainerName] = studentsWithVeryPoor;
+  TraineesWithVeryPoorRatings[trainerName] = TraineesWithVeryPoor;
 
   const commentWellKey = headers.find((k) =>
     k.toLowerCase().includes("what went")
@@ -560,9 +560,7 @@ async function generateSingleTrainerReport(trainerName) {
       hideLoading();
     });
 
-    
-
-    addSaveButtonToReportPage()
+  addSaveButtonToReportPage();
 }
 
 async function generateMultipleTrainerReports() {
@@ -669,9 +667,9 @@ async function generateMultipleTrainerReports() {
   const trainerNames = Object.keys(trainerGroups);
 
   Object.entries(trainerGroups).forEach(([trainer, cols]) => {
-    // Get students with very poor ratings for this trainer
-    const studentsWithVeryPoor = getStudentsWithVeryPoorRating(trainer, cols);
-    studentsWithVeryPoorRatings[trainer] = studentsWithVeryPoor;
+    // Get Trainees with very poor ratings for this trainer
+    const TraineesWithVeryPoor = getTraineesWithVeryPoorRating(trainer, cols);
+    TraineesWithVeryPoorRatings[trainer] = TraineesWithVeryPoor;
 
     generateReport(trainer, cols, summaryWell, summaryImprove);
   });
@@ -681,7 +679,7 @@ async function generateMultipleTrainerReports() {
 
   document.getElementById("dashboardPage").classList.add("hidden");
   document.getElementById("reportPage").classList.remove("hidden");
-  addSaveButtonToReportPage()
+  addSaveButtonToReportPage();
 }
 
 function createTrainerFilterDropdown(trainerNames) {
@@ -733,7 +731,6 @@ function filterReportsByTrainer() {
     }
   });
 
-  // Update bulk actions visibility
   updateBulkActionsVisibility();
 }
 
@@ -791,8 +788,8 @@ function generateReport(trainerName, columns, commentsWell, commentsImprove) {
 
   const overall = scoreCount ? (totalScore / scoreCount).toFixed(2) : "N/A";
 
-  // Get students with very poor ratings for email functionality
-  const studentsWithVeryPoor = studentsWithVeryPoorRatings[trainerName] || [];
+  // Get Trainees with very poor ratings for email functionality
+  const TraineesWithVeryPoor = TraineesWithVeryPoorRatings[trainerName] || [];
 
   const output = document.getElementById("output");
   const div = document.createElement("div");
@@ -807,8 +804,8 @@ function generateReport(trainerName, columns, commentsWell, commentsImprove) {
       <div><strong>Trainer Name:</strong> ${trainerName}</div>
       <div><strong>Overall Program Rating (out of 5):</strong> ${overall}</div>
       ${
-        studentsWithVeryPoor.length > 0
-          ? `<div><strong>Students with "Very Poor" ratings:</strong> ${studentsWithVeryPoor.length}</div>`
+        TraineesWithVeryPoor.length > 0
+          ? `<div><strong>Trainees with "Very Poor" ratings:</strong> ${TraineesWithVeryPoor.length}</div>`
           : ""
       }
     </div>
@@ -857,25 +854,26 @@ function generateReport(trainerName, columns, commentsWell, commentsImprove) {
         : ""
     }
     ${
-      studentsWithVeryPoor.length > 0
+      TraineesWithVeryPoor.length > 0
         ? `
-    <div class="section">
-      <h3>Students with "Very Poor" Ratings</h3>
-      <p>The following students gave "Very Poor" ratings:</p>
+    <div class="section avoid-download">
+      <h3>Trainees with "Very Poor" Ratings</h3>
+      <p>The following Trainees gave "Very Poor" ratings:</p>
       <ul>
-        ${studentsWithVeryPoor
-          .map((student) => `<li>${student.name} (${student.email})</li>`)
-          .join("")}
+        ${TraineesWithVeryPoor.map(
+          (Trainee) => `<li>${Trainee.name} (${Trainee.email})</li>`
+        ).join("")}
       </ul>
     </div>
     `
         : ""
     }
+
   </div>
   <div class="report-actions">
     <button onclick="downloadPDF(this)"><i class="fa-solid fa-arrow-down"></i> Download PDF</button>
     ${
-      studentsWithVeryPoor.length > 0
+      TraineesWithVeryPoor.length > 0
         ? `
       <button onclick="openOutlookWebWithEmails('${trainerName}')" class="email-btn">
         <i class="fa-solid fa-envelope"></i> Open Outlook with Emails
@@ -898,18 +896,20 @@ function generateReport(trainerName, columns, commentsWell, commentsImprove) {
   }
 }
 
-
 function goBack() {
-    localStorage.removeItem("viewReportId"); // Clear any stored report ID
-    document.getElementById("reportPage").classList.add("hidden");
-    document.getElementById("dashboardPage").classList.remove("hidden");
+  localStorage.removeItem("viewReportId"); // Clear any stored report ID
+  document.getElementById("reportPage").classList.add("hidden");
+  document.getElementById("dashboardPage").classList.remove("hidden");
 }
 
 async function downloadPDF(button) {
   const reportDiv = button.closest(".report").querySelector(".report-content"); // only content
   const { jsPDF } = window.jspdf;
 
-  const canvas = await html2canvas(reportDiv, { scale: 2 });
+  const canvas = await html2canvas(reportDiv, {
+    scale: 2,
+    ignoreElements: (element) => element.classList.contains("avoid-download"),
+  });
   const imgData = canvas.toDataURL("image/png");
 
   const pdf = new jsPDF("p", "mm", "a4");
@@ -1055,161 +1055,165 @@ let currentReportData = null;
 
 // Function to prepare report data structure
 function prepareReportData() {
-    const reports = [];
-    const reportDivs = document.querySelectorAll(".report");
-    
-    reportDivs.forEach(reportDiv => {
-        const reportContent = reportDiv.querySelector(".report-content");
-        const trainerName = reportContent.querySelector("h2").textContent
-            .replace("ILP - Tech Fundamentals Feedback — ", "").trim();
-        
-        // Extract meta information
-        const metaDiv = reportContent.querySelector(".meta");
-        const metaDivs = metaDiv.querySelectorAll("div");
-        
-        let batchName = "";
-        let traineeCount = 0;
-        let overallRating = "";
-        
-        metaDivs.forEach(div => {
-            const text = div.textContent;
-            if (text.includes("Batch Name:")) {
-                batchName = text.replace("Batch Name:", "").trim();
-            } else if (text.includes("Total Trainee Count:")) {
-                traineeCount = parseInt(text.replace("Total Trainee Count:", "").trim());
-            } else if (text.includes("Overall Program Rating")) {
-                overallRating = text.split(":")[1].trim();
-            }
-        });
-        
-        // Extract table data
-        const table = reportContent.querySelector("table");
-        const tableData = [];
-        const rows = table.querySelectorAll("tr");
-        
-        rows.forEach((row, index) => {
-            if (index === 0) return; // Skip header
-            const cells = row.querySelectorAll("td");
-            if (cells.length > 0) {
-                tableData.push({
-                    category: cells[0].textContent.trim(),
-                    excellent: parseInt(cells[1].textContent),
-                    veryGood: parseInt(cells[2].textContent),
-                    good: parseInt(cells[3].textContent),
-                    average: parseInt(cells[4].textContent),
-                    veryPoor: parseInt(cells[5].textContent),
-                    total: parseInt(cells[6].textContent)
-                });
-            }
-        });
-        
-        // Extract comments
-        const sections = reportContent.querySelectorAll(".section");
-        let commentsWell = [];
-        let commentsImprove = [];
-        let studentsWithPoorRatings = [];
-        
-        sections.forEach(section => {
-            const heading = section.querySelector("h3").textContent;
-            const items = section.querySelectorAll("li");
-            
-            if (heading.includes("What went well")) {
-                commentsWell = Array.from(items).map(li => li.textContent);
-            } else if (heading.includes("What needs improvement")) {
-                commentsImprove = Array.from(items).map(li => li.textContent);
-            } else if (heading.includes("Very Poor")) {
-                studentsWithPoorRatings = Array.from(items).map(li => li.textContent);
-            }
-        });
-        
-        reports.push({
-            trainerName,
-            batchName,
-            traineeCount,
-            overallRating,
-            tableData,
-            commentsWell,
-            commentsImprove,
-            studentsWithPoorRatings
-        });
+  const reports = [];
+  const reportDivs = document.querySelectorAll(".report");
+
+  reportDivs.forEach((reportDiv) => {
+    const reportContent = reportDiv.querySelector(".report-content");
+    const trainerName = reportContent
+      .querySelector("h2")
+      .textContent.replace("ILP - Tech Fundamentals Feedback — ", "")
+      .trim();
+
+    // Extract meta information
+    const metaDiv = reportContent.querySelector(".meta");
+    const metaDivs = metaDiv.querySelectorAll("div");
+
+    let batchName = "";
+    let traineeCount = 0;
+    let overallRating = "";
+
+    metaDivs.forEach((div) => {
+      const text = div.textContent;
+      if (text.includes("Batch Name:")) {
+        batchName = text.replace("Batch Name:", "").trim();
+      } else if (text.includes("Total Trainee Count:")) {
+        traineeCount = parseInt(
+          text.replace("Total Trainee Count:", "").trim()
+        );
+      } else if (text.includes("Overall Program Rating")) {
+        overallRating = text.split(":")[1].trim();
+      }
     });
-    
-    return reports;
+
+    // Extract table data
+    const table = reportContent.querySelector("table");
+    const tableData = [];
+    const rows = table.querySelectorAll("tr");
+
+    rows.forEach((row, index) => {
+      if (index === 0) return; // Skip header
+      const cells = row.querySelectorAll("td");
+      if (cells.length > 0) {
+        tableData.push({
+          category: cells[0].textContent.trim(),
+          excellent: parseInt(cells[1].textContent),
+          veryGood: parseInt(cells[2].textContent),
+          good: parseInt(cells[3].textContent),
+          average: parseInt(cells[4].textContent),
+          veryPoor: parseInt(cells[5].textContent),
+          total: parseInt(cells[6].textContent),
+        });
+      }
+    });
+
+    // Extract comments
+    const sections = reportContent.querySelectorAll(".section");
+    let commentsWell = [];
+    let commentsImprove = [];
+    let TraineesWithPoorRatings = [];
+
+    sections.forEach((section) => {
+      const heading = section.querySelector("h3").textContent;
+      const items = section.querySelectorAll("li");
+
+      if (heading.includes("What went well")) {
+        commentsWell = Array.from(items).map((li) => li.textContent);
+      } else if (heading.includes("What needs improvement")) {
+        commentsImprove = Array.from(items).map((li) => li.textContent);
+      } else if (heading.includes("Very Poor")) {
+        TraineesWithPoorRatings = Array.from(items).map((li) => li.textContent);
+      }
+    });
+
+    reports.push({
+      trainerName,
+      batchName,
+      traineeCount,
+      overallRating,
+      tableData,
+      commentsWell,
+      commentsImprove,
+      TraineesWithPoorRatings,
+    });
+  });
+
+  return reports;
 }
 
 // Open save report modal
 function openSaveReportModal() {
-    currentReportData = prepareReportData();
-    document.getElementById("saveReportModal").style.display = "flex";
-    document.getElementById("reportName").value = "";
+  currentReportData = prepareReportData();
+  document.getElementById("saveReportModal").style.display = "flex";
+  document.getElementById("reportName").value = "";
 }
 
 // Close save report modal
 function closeSaveReportModal() {
-    document.getElementById("saveReportModal").style.display = "none";
-    currentReportData = null;
+  document.getElementById("saveReportModal").style.display = "none";
+  currentReportData = null;
 }
 
 // Save report to Firebase
 async function saveReportToHistory() {
-    const reportName = document.getElementById("reportName").value.trim();
-    
-    if (!reportName) {
-        showMessage("error", "Please enter a report name");
-        return;
-    }
-    
-    if (!currentReportData || currentReportData.length === 0) {
-        showMessage("error", "No report data to save");
-        return;
-    }
-    
-    try {
-        showLoading("Saving report...");
-        
-        const timestamp = Date.now();
-        const date = new Date(timestamp);
-        const formattedDate = date.toLocaleDateString('en-IN', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric'
-        });
-        const formattedTime = date.toLocaleTimeString('en-IN', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true
-        });
-        
-        const reportType = fileType === 'single_trainer' ? 'Single Trainer' : 'Multiple Trainers';
-        
-        const historyEntry = {
-            reportName,
-            reportType,
-            timestamp,
-            date: formattedDate,
-            time: formattedTime,
-            reports: currentReportData,
-            questionsUsed: [...questions], // Save questions used at time of generation
-            fileInfo: {
-                traineeCount: excelRows.length,
-                trainerCount: currentReportData.length
-            }
-        };
-        
-        // Save to Firebase
-        const historyRef = ref(db, "history");
-        const newReportRef = push(historyRef);
-        await set(newReportRef, historyEntry);
-        
-        showMessage("success", `Report "${reportName}" saved successfully!`);
-        closeSaveReportModal();
-        hideLoading();
-        
-    } catch (error) {
-        console.error("Error saving report:", error);
-        showMessage("error", "Failed to save report. Please try again.");
-        hideLoading();
-    }
+  const reportName = document.getElementById("reportName").value.trim();
+
+  if (!reportName) {
+    showMessage("error", "Please enter a report name");
+    return;
+  }
+
+  if (!currentReportData || currentReportData.length === 0) {
+    showMessage("error", "No report data to save");
+    return;
+  }
+
+  try {
+    showLoading("Saving report...");
+
+    const timestamp = Date.now();
+    const date = new Date(timestamp);
+    const formattedDate = date.toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+    const formattedTime = date.toLocaleTimeString("en-IN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+
+    const reportType =
+      fileType === "single_trainer" ? "Single Trainer" : "Multiple Trainers";
+
+    const historyEntry = {
+      reportName,
+      reportType,
+      timestamp,
+      date: formattedDate,
+      time: formattedTime,
+      reports: currentReportData,
+      questionsUsed: [...questions], // Save questions used at time of generation
+      fileInfo: {
+        traineeCount: excelRows.length,
+        trainerCount: currentReportData.length,
+      },
+    };
+
+    // Save to Firebase
+    const historyRef = ref(db, "history");
+    const newReportRef = push(historyRef);
+    await set(newReportRef, historyEntry);
+
+    showMessage("success", `Report "${reportName}" saved successfully!`);
+    closeSaveReportModal();
+    hideLoading();
+  } catch (error) {
+    console.error("Error saving report:", error);
+    showMessage("error", "Failed to save report. Please try again.");
+    hideLoading();
+  }
 }
 
 // Update the report page to include Save button
@@ -1217,24 +1221,24 @@ async function saveReportToHistory() {
 // Add this after the "Go Back" button in the reportPage div:
 
 function addSaveButtonToReportPage() {
-    const reportPage = document.getElementById("reportPage");
-    const existingSaveBtn = document.getElementById("saveReportBtn");
-    
-    if (!existingSaveBtn) {
-        const backButton = reportPage.querySelector('button[onclick="goBack()"]');
-        const saveButton = document.createElement("button");
-        saveButton.id = "saveReportBtn";
-        saveButton.onclick = openSaveReportModal;
-        saveButton.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Report';
-        saveButton.style.marginLeft = "10px";
-        backButton.after(saveButton);
-    }
+  const reportPage = document.getElementById("reportPage");
+  const existingSaveBtn = document.getElementById("saveReportBtn");
+
+  if (!existingSaveBtn) {
+    const backButton = reportPage.querySelector('button[onclick="goBack()"]');
+    const saveButton = document.createElement("button");
+    saveButton.id = "saveReportBtn";
+    saveButton.onclick = openSaveReportModal;
+    saveButton.innerHTML =
+      '<i class="fa-solid fa-floppy-disk"></i> Save Report';
+    saveButton.style.marginLeft = "10px";
+    backButton.after(saveButton);
+  }
 }
 
 // Call this function after generating reports
 // Add this line at the end of both generateSingleTrainerReport and generateMultipleTrainerReports:
 // addSaveButtonToReportPage();
-
 
 // Make functions globally accessible
 window.openSaveReportModal = openSaveReportModal;

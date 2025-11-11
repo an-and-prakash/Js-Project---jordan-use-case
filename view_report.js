@@ -89,8 +89,6 @@ async function loadReport() {
 
 // Display report metadata
 function displayReportMetadata() {
-
-
   const metadataDiv = document.getElementById("reportMetadata");
 
   console.log("hi");
@@ -118,13 +116,12 @@ function displayReportMetadata() {
         </div>
     `;
 
-    console.log("hi");
+  console.log("hi");
 }
 
 // Display report
 function displayReport() {
-
-    console.log("hi");
+  console.log("hi");
   displayReportMetadata();
 
   const output = document.getElementById("output");
@@ -135,13 +132,11 @@ function displayReport() {
     const trainerNames = currentReportData.reports.map((r) => r.trainerName);
     createTrainerFilterDropdown(trainerNames);
   }
-console.log("hi");
+  console.log("hi");
   // Generate each report
   currentReportData.reports.forEach((report) => {
     generateReportHTML(report);
   });
-
-  
 
   document.getElementById("reportPage").classList.remove("hidden");
 
@@ -211,7 +206,9 @@ function generateReportHTML(report) {
   const div = document.createElement("div");
   div.className = "report";
 
-  const tableRows = (report.tableData || []).map(row => `
+  const tableRows = (report.tableData || [])
+    .map(
+      (row) => `
     <tr>
       <td style="text-align:left">${row.category || ""}</td>
       <td>${row.excellent || 0}</td>
@@ -221,46 +218,68 @@ function generateReportHTML(report) {
       <td>${row.veryPoor || 0}</td>
       <td>${row.total || 0}</td>
     </tr>
-  `).join("");
+  `
+    )
+    .join("");
 
   const commentsWell = report.commentsWell || [];
   const commentsImprove = report.commentsImprove || [];
-  const studentsWithPoor = report.studentsWithPoorRatings || [];
+  const TraineesWithPoor = report.TraineesWithPoorRatings || [];
 
   div.innerHTML = `
     <div class="report-content">
       <h2>ILP - Tech Fundamentals Feedback — ${report.trainerName || ""}</h2>
       <div class="meta">
         <div><strong>Batch Name:</strong> ${report.batchName || ""}</div>
-        <div><strong>Total Trainee Count:</strong> ${report.traineeCount || 0}</div>
+        <div><strong>Total Trainee Count:</strong> ${
+          report.traineeCount || 0
+        }</div>
         <div><strong>Trainer Name:</strong> ${report.trainerName || ""}</div>
-        <div><strong>Overall Program Rating (out of 5):</strong> ${report.overallRating || 0}</div>
-        ${studentsWithPoor.length > 0 ? `<div><strong>Students with "Very Poor" ratings:</strong> ${studentsWithPoor.length}</div>` : ""}
+        <div><strong>Overall Program Rating (out of 5):</strong> ${
+          report.overallRating || 0
+        }</div>
+        ${
+          TraineesWithPoor.length > 0
+            ? `<div><strong>Trainees with "Very Poor" ratings:</strong> ${TraineesWithPoor.length}</div>`
+            : ""
+        }
       </div>
       <table>
         <tr>
           <th>Category</th>
-          ${ratingLabels.map(l => `<th>${l}</th>`).join("")}
+          ${ratingLabels.map((l) => `<th>${l}</th>`).join("")}
           <th>Total</th>
         </tr>
         ${tableRows}
       </table>
-      ${commentsWell.length > 0 ? `
+      ${
+        commentsWell.length > 0
+          ? `
         <div class="section">
           <h3>What went well / things you most liked</h3>
-          <ul>${commentsWell.map(c => `<li>${c}</li>`).join("")}</ul>
-        </div>` : ""}
-      ${commentsImprove.length > 0 ? `
+          <ul>${commentsWell.map((c) => `<li>${c}</li>`).join("")}</ul>
+        </div>`
+          : ""
+      }
+      ${
+        commentsImprove.length > 0
+          ? `
         <div class="section">
           <h3>What needs improvement</h3>
-          <ul>${commentsImprove.map(c => `<li>${c}</li>`).join("")}</ul>
-        </div>` : ""}
-      ${studentsWithPoor.length > 0 ? `
+          <ul>${commentsImprove.map((c) => `<li>${c}</li>`).join("")}</ul>
+        </div>`
+          : ""
+      }
+      ${
+        TraineesWithPoor.length > 0
+          ? `
         <div class="section">
-          <h3>Students with "Very Poor" Ratings</h3>
-          <p>The following students gave "Very Poor" ratings:</p>
-          <ul>${studentsWithPoor.map(s => `<li>${s}</li>`).join("")}</ul>
-        </div>` : ""}
+          <h3>Trainees with "Very Poor" Ratings</h3>
+          <p>The following Trainees gave "Very Poor" ratings:</p>
+          <ul>${TraineesWithPoor.map((s) => `<li>${s}</li>`).join("")}</ul>
+        </div>`
+          : ""
+      }
     </div>
     <div class="report-actions">
       <button onclick="downloadPDF(this)">
@@ -272,7 +291,6 @@ function generateReportHTML(report) {
   output.appendChild(div);
   console.log("Finished generateReportHTML");
 }
-
 
 // Download single report as PDF
 window.downloadPDF = async function (button) {
