@@ -13,22 +13,13 @@ import {
   child,
 } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyB1WuMsdZdPfuimZ7kfdeaeOsepRYOOSz8",
-  authDomain: "js-project-55861.firebaseapp.com",
-  databaseURL: "https://js-project-55861-default-rtdb.firebaseio.com",
-  projectId: "js-project-55861",
-  storageBucket: "js-project-55861.firebasestorage.app",
-  messagingSenderId: "792815063603",
-  appId: "1:792815063603:web:6d84def26f72886583c946",
-  measurementId: "G-0SCRHVW7Y1",
-};
+const firebaseConfig = window._env_;
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getDatabase(app); // <-- now app exists
 
-let questions = [];
+// let questions = [];
 
 window.onload = async () => {
   const dbRef = ref(db);
@@ -147,12 +138,14 @@ function analyzeFileStructure(headers) {
     }
   });
 
-  console.log(orderedGroups)
+  console.log("Ordered Groups:", orderedGroups);
+  
   if (Object.keys(orderedGroups).length > 0) {
     return {
       type: "multiple_trainers",
-      trainers: ['Suneesh Thampi', 'Lekshmi Asokan', 'Hari'],
+      trainers: Array.from(allTrainers),
       groups: orderedGroups,
+      questionCount: Object.keys(orderedGroups).length
     };
   }
 
@@ -164,11 +157,15 @@ function analyzeFileStructure(headers) {
     type: "single_trainer",
     mainQuestion: singleTrainerQuestion,
     additionalFields: restFields,
+    questionCount: headers.slice(7, headers.length - 4).length
   };
 }
 
 
 
+let questions = []; // Keep this global variable
+
+// 2. MODIFY handleFile function to extract questions
 function handleFile(e) {
   const file = e.target.files[0];
   if (!file) return;
@@ -195,12 +192,46 @@ function handleFile(e) {
       fileType = analysis.type;
       detectedTrainers = analysis.trainers;
 
+      // **NEW: Extract questions from headers**
+      extractQuestionsFromHeaders(headers, analysis);
+
       displayFileAnalysis(analysis, headers.length, excelRows.length);
     } catch (error) {
       showMessage("error", "Error reading Excel file: " + error.message);
     }
   };
   reader.readAsArrayBuffer(file);
+}
+
+function extractQuestionsFromHeaders(headers, analysis) {
+  questions = []; // Reset questions array
+
+  if (analysis.type === "multiple_trainers") {
+    // For multiple trainers, extract base questions (without trainer names)
+    const validHeaders = headers.slice(5, headers.length - 3);
+    const pattern = /\.+([^.\d]+)$/; // Pattern to detect trainer name
+    const seenQuestions = new Set();
+
+    validHeaders.forEach((header) => {
+      // Remove trainer name suffix to get the base question
+      const baseQuestion = header.replace(pattern, "").trim();
+      
+      // Only add unique questions
+      if (baseQuestion && !seenQuestions.has(baseQuestion)) {
+        seenQuestions.add(baseQuestion);
+        questions.push(baseQuestion);
+      }
+    });
+
+  } else {
+    // For single trainer, extract questions from column headers
+    // Assuming rating columns are from index 7 to length-4
+    const ratingHeaders = headers.slice(7, headers.length - 4);
+    questions = ratingHeaders.map(h => h.trim()).filter(q => q);
+  }
+
+  console.log("Extracted Questions from Excel:", questions);
+  renderQuestionList();
 }
 
 function displayFileAnalysis(analysis, columnCount, rowCount) {
@@ -214,23 +245,21 @@ function displayFileAnalysis(analysis, columnCount, rowCount) {
   type2Section.classList.add("hidden");
 
   let infoHTML = `
-        <h3>File Analysis Complete</h3>
-        
-        <p><strong>No of Trainees:</strong> ${rowCount}</p>
-        <p><strong>File Type:</strong> ${
-          analysis.type === "multiple_trainers"
-            ? "Multiple Trainers"
-            : "Single Trainer"
-        }</p>
-      `;
+    <h3>File Analysis Complete</h3>
+    <p><strong>No of Trainees:</strong> ${rowCount}</p>
+    <p><strong>No of Questions:</strong> ${questions.length}</p>
+    <p><strong>File Type:</strong> ${
+      analysis.type === "multiple_trainers"
+        ? "Multiple Trainers"
+        : "Single Trainer"
+    }</p>
+  `;
 
   if (analysis.type === "multiple_trainers") {
-    infoHTML += `<p><strong>Trainers:</strong> ${analysis.trainers.join(
-      ", "
-    )}</p>`;
+    infoHTML += `<p><strong>Trainers:</strong> ${analysis.trainers.join(", ")}</p>`;
     type1Section.classList.remove("hidden");
   } else {
-    infoHTML += `<p><strong>Note:</strong>  Please specify trainer name below.</p>`;
+    infoHTML += `<p><strong>Note:</strong> Please specify trainer name below.</p>`;
     type2Section.classList.remove("hidden");
   }
 
@@ -239,9 +268,10 @@ function displayFileAnalysis(analysis, columnCount, rowCount) {
 
   showMessage(
     "success",
-    "Excel file loaded successfully! Please review the analysis above and generate reports."
+    `Excel file loaded successfully! ${questions.length} questions detected. Please review and generate reports.`
   );
 }
+
 
 function showMessage(type, message) {
   const existingMsg = document.querySelector(".error, .success");
