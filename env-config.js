@@ -23,6 +23,8 @@ const getEnvVar = (key) => {
 export const envConfig = {
   // Gemini API
   geminiApiKey: getEnvVar("VITE_GEMINI_API_KEY"),
+  geminiEndpoint:
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
 
   // Firebase Configuration
   firebase: {

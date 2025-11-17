@@ -3,13 +3,21 @@
 // Excel file processing, report generation, and PDF exports
 // ===================================
 
-import { db, questions, showLoading, hideLoading, showMessage } from './firebase-config.js';
+import {
+  db,
+  questions,
+  showLoading,
+  hideLoading,
+  showMessage,
+} from "./firebase-config.js";
+import { envConfig } from "./env-config.js";
 
 // Global variables
 export let excelRows = [];
 export let fileType = null;
 export let detectedTrainers = [];
 export let studentsWithVeryPoorRatings = {};
+export let trainingTopic = "Tech Fundamentals"; // Default topic, can be changed by user
 
 // Constants
 const NORMALIZE = (s) => ("" + (s || "")).toString().trim().toLowerCase();
@@ -31,7 +39,9 @@ const ratingLabels = ["Excellent", "Very Good", "Good", "Average", "Very Poor"];
 // FILE HANDLING
 // ===================================
 
-document.getElementById("fileInput")?.addEventListener("change", handleFile, false);
+document
+  .getElementById("fileInput")
+  ?.addEventListener("change", handleFile, false);
 
 function handleFile(e) {
   const file = e.target.files[0];
@@ -46,7 +56,10 @@ function handleFile(e) {
       excelRows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
 
       if (excelRows.length === 0) {
-        showMessage("error", "The Excel file appears to be empty or has no data rows.");
+        showMessage(
+          "error",
+          "The Excel file appears to be empty or has no data rows."
+        );
         return;
       }
 
@@ -91,13 +104,13 @@ function analyzeFileStructure(headers) {
   });
 
   console.log("Ordered Groups:", orderedGroups);
-  
+
   if (Object.keys(orderedGroups).length > 0) {
     return {
       type: "multiple_trainers",
       trainers: Array.from(allTrainers),
       groups: orderedGroups,
-      questionCount: Object.keys(orderedGroups).length
+      questionCount: Object.keys(orderedGroups).length,
     };
   }
 
@@ -108,7 +121,7 @@ function analyzeFileStructure(headers) {
     type: "single_trainer",
     mainQuestion: singleTrainerQuestion,
     additionalFields: restFields,
-    questionCount: headers.slice(7, headers.length - 4).length
+    questionCount: headers.slice(7, headers.length - 4).length,
   };
 }
 
@@ -129,7 +142,7 @@ function extractQuestionsFromHeaders(headers, analysis) {
     });
   } else {
     const ratingHeaders = headers.slice(7, headers.length - 4);
-    questions.push(...ratingHeaders.map(h => h.trim()).filter(q => q));
+    questions.push(...ratingHeaders.map((h) => h.trim()).filter((q) => q));
   }
 
   console.log("Extracted Questions from Excel:", questions);
@@ -150,12 +163,16 @@ function displayFileAnalysis(analysis, columnCount, rowCount) {
     <p><strong>No of Trainees:</strong> ${rowCount}</p>
     <p><strong>No of Questions:</strong> ${questions.length}</p>
     <p><strong>File Type:</strong> ${
-      analysis.type === "multiple_trainers" ? "Multiple Trainers" : "Single Trainer"
+      analysis.type === "multiple_trainers"
+        ? "Multiple Trainers"
+        : "Single Trainer"
     }</p>
   `;
 
   if (analysis.type === "multiple_trainers") {
-    infoHTML += `<p><strong>Trainers:</strong> ${analysis.trainers.join(", ")}</p>`;
+    infoHTML += `<p><strong>Trainers:</strong> ${analysis.trainers.join(
+      ", "
+    )}</p>`;
     type1Section?.classList.remove("hidden");
   } else {
     infoHTML += `<p><strong>Note:</strong> Please specify trainer name below.</p>`;
@@ -165,7 +182,10 @@ function displayFileAnalysis(analysis, columnCount, rowCount) {
   if (fileInfoDiv) fileInfoDiv.innerHTML = infoHTML;
   analysisDiv?.classList.remove("hidden");
 
-  showMessage("success", `Excel file loaded successfully! ${questions.length} questions detected.`);
+  showMessage(
+    "success",
+    `Excel file loaded successfully! ${questions.length} questions detected.`
+  );
 }
 
 // ===================================
@@ -234,7 +254,9 @@ export function openOutlookWebWithEmails(trainerName) {
   }
 
   const emails = students.map((student) => student.email).join(";");
-  const subject = encodeURIComponent(`Follow-up: Training Feedback - ${trainerName}`);
+  const subject = encodeURIComponent(
+    `Follow-up: Training Feedback - ${trainerName}`
+  );
   const body = encodeURIComponent(
     `Dear Team,\n\nThis is a follow-up regarding the recent training session conducted by ${trainerName}. We would like to discuss your feedback to help us improve our training programs.\n\nBest regards,\nJordan S Ben,\nLearing and development`
   );
@@ -280,12 +302,19 @@ export function generateReports() {
     return;
   }
 
+  // Get the training topic from the input field
+  trainingTopic =
+    document.getElementById("trainingTopic")?.value || "Tech Fundamentals";
+
   studentsWithVeryPoorRatings = {};
 
   if (fileType === "single_trainer") {
     const trainerName = document.getElementById("trainerNameSelect")?.value;
     if (!trainerName) {
-      showMessage("error", "Please enter a trainer name for single trainer feedback.");
+      showMessage(
+        "error",
+        "Please enter a trainer name for single trainer feedback."
+      );
       return;
     }
     generateSingleTrainerReport(trainerName);
@@ -305,27 +334,38 @@ async function generateSingleTrainerReport(trainerName) {
   const headers = Object.keys(excelRows[0]);
   const ratingColumns = headers.slice(7, headers.length - 4);
 
-  const studentsWithVeryPoor = getStudentsWithVeryPoorRating(trainerName, ratingColumns);
+  const studentsWithVeryPoor = getStudentsWithVeryPoorRating(
+    trainerName,
+    ratingColumns
+  );
   studentsWithVeryPoorRatings[trainerName] = studentsWithVeryPoor;
 
-  const commentWellKey = headers.find((k) => k.toLowerCase().includes("what went"));
+  const commentWellKey = headers.find((k) =>
+    k.toLowerCase().includes("what went")
+  );
   const commentImproveKey = headers.find(
-    (k) => k.toLowerCase().includes("what needs") || k.toLowerCase().includes("what need")
+    (k) =>
+      k.toLowerCase().includes("what needs") ||
+      k.toLowerCase().includes("what need")
   );
 
   const commentsWell = commentWellKey
-    ? excelRows.map((r) => r[commentWellKey]).filter((c) => c && c.toString().trim())
+    ? excelRows
+        .map((r) => r[commentWellKey])
+        .filter((c) => c && c.toString().trim())
     : [];
 
   const commentsImprove = commentImproveKey
-    ? excelRows.map((r) => r[commentImproveKey]).filter((c) => c && c.toString().trim())
+    ? excelRows
+        .map((r) => r[commentImproveKey])
+        .filter((c) => c && c.toString().trim())
     : [];
 
   const output = document.getElementById("output");
   if (output) output.innerHTML = "";
 
-  const API_KEY = "AIzaSyAIjhn5kPPAYRjPrhZy2f8moH6ozfUaR2o";
-  const ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+  const API_KEY = envConfig.geminiApiKey;
+  const ENDPOINT = envConfig.geminiEndpoint;
 
   async function summarizeWithGemini(label, comments) {
     if (!comments.length) return [`No ${label} comments available.`];
@@ -349,7 +389,10 @@ async function generateSingleTrainerReport(trainerName) {
       }
 
       let summary = result?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      summary = summary.replace(/\*/g, "").split("\n").filter((l) => l.trim() !== "");
+      summary = summary
+        .replace(/\*/g, "")
+        .split("\n")
+        .filter((l) => l.trim() !== "");
       return summary;
     } catch (err) {
       console.error("Gemini fetch failed:", err);
@@ -392,24 +435,32 @@ async function generateMultipleTrainerReports() {
     }
   });
 
-  const commentWellKey = headers.find((k) => k.toLowerCase().includes("what went"));
+  const commentWellKey = headers.find((k) =>
+    k.toLowerCase().includes("what went")
+  );
   const commentImproveKey = headers.find(
-    (k) => k.toLowerCase().includes("what needs") || k.toLowerCase().includes("what need")
+    (k) =>
+      k.toLowerCase().includes("what needs") ||
+      k.toLowerCase().includes("what need")
   );
 
   const commentsWell = commentWellKey
-    ? excelRows.map((r) => r[commentWellKey]).filter((c) => c && c.toString().trim())
+    ? excelRows
+        .map((r) => r[commentWellKey])
+        .filter((c) => c && c.toString().trim())
     : [];
 
   const commentsImprove = commentImproveKey
-    ? excelRows.map((r) => r[commentImproveKey]).filter((c) => c && c.toString().trim())
+    ? excelRows
+        .map((r) => r[commentImproveKey])
+        .filter((c) => c && c.toString().trim())
     : [];
 
   const output = document.getElementById("output");
   if (output) output.innerHTML = "";
 
-  const API_KEY = "AIzaSyAIjhn5kPPAYRjPrhZy2f8moH6ozfUaR2o";
-  const ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+  const API_KEY = envConfig.geminiApiKey;
+  const ENDPOINT = envConfig.geminiEndpoint;
 
   async function summarizeWithGemini(label, comments) {
     if (!comments.length) return [`No ${label} comments available.`];
@@ -433,7 +484,10 @@ async function generateMultipleTrainerReports() {
       }
 
       let summary = result?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      summary = summary.replace(/\*/g, "").split("\n").filter((l) => l.trim() !== "");
+      summary = summary
+        .replace(/\*/g, "")
+        .split("\n")
+        .filter((l) => l.trim() !== "");
       return summary;
     } catch (err) {
       console.error("Gemini fetch failed:", err);
@@ -518,7 +572,7 @@ function generateReport(trainerName, columns, commentsWell, commentsImprove) {
 
   div.innerHTML = `
   <div class="report-content">
-    <h2>ILP - Tech Fundamentals Feedback — ${trainerName}</h2>
+    <h2>ILP - ${trainingTopic} Feedback — ${trainerName}</h2>
     <div class="meta">
       <div><strong>Batch Name:</strong> ILP 2024-25 Batch</div>
       <div><strong>Total Trainee Count:</strong> ${excelRows.length}</div>
@@ -540,7 +594,9 @@ function generateReport(trainerName, columns, commentsWell, commentsImprove) {
         .map(
           (c, i) => `
         <tr>
-          <td style="text-align:left">${questions[i] || "Category " + (i + 1)}</td>
+          <td style="text-align:left">${
+            questions[i] || "Category " + (i + 1)
+          }</td>
           <td>${ratings[i]["Excellent"]}</td>
           <td>${ratings[i]["Very Good"]}</td>
           <td>${ratings[i]["Good"]}</td>
@@ -634,7 +690,9 @@ function createTrainerFilterDropdown(trainerNames) {
       </label>
       <select id="trainerFilter" onchange="filterReportsByTrainer()">
         <option value="all">Show All Trainers</option>
-        ${trainerNames.map((name) => `<option value="${name}">${name}</option>`).join("")}
+        ${trainerNames
+          .map((name) => `<option value="${name}">${name}</option>`)
+          .join("")}
       </select>
     </div>
   `;
@@ -650,8 +708,9 @@ export function filterReportsByTrainer() {
   allReports.forEach((report) => {
     const reportTitle = report.querySelector("h2")?.textContent;
     if (!reportTitle) return;
-    
-    const trainerName = reportTitle.replace("ILP - Tech Fundamentals Feedback — ", "").trim();
+
+    // Extract trainer name from title format "ILP - [Topic] Feedback — [TrainerName]"
+    const trainerName = reportTitle.split(" — ")[1]?.trim() || "";
 
     if (selectedTrainer === "all" || trainerName === selectedTrainer) {
       report.style.display = "block";
@@ -685,11 +744,12 @@ export function goBack() {
 export async function downloadPDF(button) {
   const reportDiv = button.closest(".report")?.querySelector(".report-content");
   if (!reportDiv) return;
-  
+
   const { jsPDF } = window.jspdf;
 
-  const poorSection = Array.from(reportDiv.querySelectorAll(".section"))
-    .find(sec => sec.querySelector("h3")?.textContent.includes("Very Poor"));
+  const poorSection = Array.from(reportDiv.querySelectorAll(".section")).find(
+    (sec) => sec.querySelector("h3")?.textContent.includes("Very Poor")
+  );
 
   if (poorSection) poorSection.style.display = "none";
 
@@ -712,8 +772,8 @@ export async function downloadPDF(button) {
   pdf.addImage(imgData, "PNG", 10, 10, imgWidth, imgHeight);
 
   const trainerName =
-    reportDiv.querySelector("h2")?.textContent
-      .replace("ILP - Tech Fundamentals Feedback — ", "").trim() || "TrainerReport";
+    reportDiv.querySelector("h2")?.textContent.split(" — ")[1]?.trim() ||
+    "TrainerReport";
 
   pdf.save(`${trainerName}_Feedback_Report.pdf`);
 }
@@ -732,8 +792,9 @@ export async function downloadAllReports() {
   for (let i = 0; i < reports.length; i++) {
     const reportDiv = reports[i];
 
-    const poorSection = Array.from(reportDiv.querySelectorAll(".section"))
-      .find(sec => sec.querySelector("h3")?.textContent.includes("Very Poor"));
+    const poorSection = Array.from(reportDiv.querySelectorAll(".section")).find(
+      (sec) => sec.querySelector("h3")?.textContent.includes("Very Poor")
+    );
 
     if (poorSection) poorSection.style.display = "none";
 
@@ -767,36 +828,40 @@ export async function downloadAllReports() {
 export function prepareReportData() {
   const reports = [];
   const reportDivs = document.querySelectorAll(".report");
-  
-  reportDivs.forEach(reportDiv => {
+
+  reportDivs.forEach((reportDiv) => {
     const reportContent = reportDiv.querySelector(".report-content");
     if (!reportContent) return;
-    
-    const trainerName = reportContent.querySelector("h2")?.textContent
-      .replace("ILP - Tech Fundamentals Feedback — ", "").trim();
-    
+
+    const trainerName = reportContent
+      .querySelector("h2")
+      ?.textContent.split(" — ")[1]
+      ?.trim();
+
     const metaDiv = reportContent.querySelector(".meta");
     const metaDivs = metaDiv?.querySelectorAll("div") || [];
-    
+
     let batchName = "";
     let traineeCount = 0;
     let overallRating = "";
-    
-    metaDivs.forEach(div => {
+
+    metaDivs.forEach((div) => {
       const text = div.textContent;
       if (text.includes("Batch Name:")) {
         batchName = text.replace("Batch Name:", "").trim();
       } else if (text.includes("Total Trainee Count:")) {
-        traineeCount = parseInt(text.replace("Total Trainee Count:", "").trim());
+        traineeCount = parseInt(
+          text.replace("Total Trainee Count:", "").trim()
+        );
       } else if (text.includes("Overall Program Rating")) {
         overallRating = text.split(":")[1].trim();
       }
     });
-    
+
     const table = reportContent.querySelector("table");
     const tableData = [];
     const rows = table?.querySelectorAll("tr") || [];
-    
+
     rows.forEach((row, index) => {
       if (index === 0) return;
       const cells = row.querySelectorAll("td");
@@ -808,29 +873,29 @@ export function prepareReportData() {
           good: parseInt(cells[3].textContent),
           average: parseInt(cells[4].textContent),
           veryPoor: parseInt(cells[5].textContent),
-          total: parseInt(cells[6].textContent)
+          total: parseInt(cells[6].textContent),
         });
       }
     });
-    
+
     const sections = reportContent.querySelectorAll(".section");
     let commentsWell = [];
     let commentsImprove = [];
     let studentsWithPoorRatings = [];
-    
-    sections.forEach(section => {
+
+    sections.forEach((section) => {
       const heading = section.querySelector("h3")?.textContent;
       const items = section.querySelectorAll("li");
-      
+
       if (heading?.includes("What went well")) {
-        commentsWell = Array.from(items).map(li => li.textContent);
+        commentsWell = Array.from(items).map((li) => li.textContent);
       } else if (heading?.includes("What needs improvement")) {
-        commentsImprove = Array.from(items).map(li => li.textContent);
+        commentsImprove = Array.from(items).map((li) => li.textContent);
       } else if (heading?.includes("Very Poor")) {
-        studentsWithPoorRatings = Array.from(items).map(li => li.textContent);
+        studentsWithPoorRatings = Array.from(items).map((li) => li.textContent);
       }
     });
-    
+
     reports.push({
       trainerName,
       batchName,
@@ -839,26 +904,27 @@ export function prepareReportData() {
       tableData,
       commentsWell,
       commentsImprove,
-      studentsWithPoorRatings
+      studentsWithPoorRatings,
     });
   });
-  
+
   return reports;
 }
 
 function addSaveButtonToReportPage() {
   const reportPage = document.getElementById("reportPage");
   if (!reportPage) return;
-  
+
   const existingSaveBtn = document.getElementById("saveReportBtn");
-  
+
   if (!existingSaveBtn) {
     const backButton = reportPage.querySelector('button[onclick="goBack()"]');
     if (backButton) {
       const saveButton = document.createElement("button");
       saveButton.id = "saveReportBtn";
       saveButton.onclick = window.openSaveReportModal;
-      saveButton.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Report';
+      saveButton.innerHTML =
+        '<i class="fa-solid fa-floppy-disk"></i> Save Report';
       saveButton.style.marginLeft = "10px";
       backButton.after(saveButton);
     }
@@ -882,3 +948,4 @@ window.prepareReportData = prepareReportData;
 window.addSaveButtonToReportPage = addSaveButtonToReportPage;
 window.excelRows = excelRows;
 window.fileType = fileType;
+window.trainingTopic = trainingTopic;

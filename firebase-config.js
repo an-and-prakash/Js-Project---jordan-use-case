@@ -58,10 +58,10 @@ window.onload = async () => {
   try {
     const loadingEl = document.getElementById("loading");
     const outputEl = document.getElementById("output");
-    
+
     if (loadingEl) loadingEl.style.display = "block";
     if (outputEl) outputEl.innerHTML = "";
-    
+
     const snapshot = await get(child(dbRef, "questions"));
     if (snapshot.exists()) {
       const questionsObj = snapshot.val();
@@ -77,7 +77,7 @@ window.onload = async () => {
     const loadingEl = document.getElementById("loading");
     if (loadingEl) loadingEl.style.display = "none";
   }
-  
+
   // Load trainers
   await loadTrainers();
 };
@@ -89,7 +89,7 @@ window.onload = async () => {
 export function renderQuestionList() {
   const list = document.getElementById("questionList");
   if (!list) return;
-  
+
   list.innerHTML = "";
   questions.forEach((q) => {
     const li = document.createElement("li");
@@ -167,7 +167,7 @@ export async function loadTrainers() {
 export function renderTrainerDropdown() {
   const select = document.getElementById("trainerNameSelect");
   if (!select) return;
-  
+
   select.innerHTML = "";
   trainers.forEach((t) => {
     const option = document.createElement("option");
@@ -230,38 +230,42 @@ export function saveTrainers() {
 
 export async function saveReportToHistory() {
   const reportName = document.getElementById("reportName").value.trim();
-  
+
   if (!reportName) {
     showMessage("error", "Please enter a report name");
     return;
   }
-  
+
   const currentReportData = window.prepareReportData?.();
-  
+
   if (!currentReportData || currentReportData.length === 0) {
     showMessage("error", "No report data to save");
     return;
   }
-  
+
   try {
     showLoading("Saving report...");
-    
+
     const timestamp = Date.now();
     const date = new Date(timestamp);
-    const formattedDate = date.toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
+    const formattedDate = date.toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
     });
-    const formattedTime = date.toLocaleTimeString('en-IN', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
+    const formattedTime = date.toLocaleTimeString("en-IN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
     });
-    
+
     const historyEntry = {
       reportName,
-      reportType: window.fileType === 'single_trainer' ? 'Single Trainer' : 'Multiple Trainers',
+      reportType:
+        window.fileType === "single_trainer"
+          ? "Single Trainer"
+          : "Multiple Trainers",
+      trainingTopic: window.trainingTopic || "Tech Fundamentals",
       timestamp,
       date: formattedDate,
       time: formattedTime,
@@ -269,18 +273,17 @@ export async function saveReportToHistory() {
       questionsUsed: [...questions],
       fileInfo: {
         traineeCount: window.excelRows?.length || 0,
-        trainerCount: currentReportData.length
-      }
+        trainerCount: currentReportData.length,
+      },
     };
-    
+
     const historyRef = ref(db, "history");
     const newReportRef = push(historyRef);
     await set(newReportRef, historyEntry);
-    
+
     showMessage("success", `Report "${reportName}" saved successfully!`);
     closeSaveReportModal();
     hideLoading();
-    
   } catch (error) {
     console.error("Error saving report:", error);
     showMessage("error", "Failed to save report. Please try again.");

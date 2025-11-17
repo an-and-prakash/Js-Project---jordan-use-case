@@ -135,7 +135,10 @@ function displayReport() {
   console.log("hi");
   // Generate each report
   currentReportData.reports.forEach((report) => {
-    generateReportHTML(report);
+    generateReportHTML(
+      report,
+      currentReportData.trainingTopic || "Tech Fundamentals"
+    );
   });
 
   document.getElementById("reportPage").classList.remove("hidden");
@@ -169,9 +172,8 @@ window.filterReportsByTrainer = function () {
 
   allReports.forEach((report) => {
     const reportTitle = report.querySelector("h2").textContent;
-    const trainerName = reportTitle
-      .replace("ILP - Tech Fundamentals Feedback — ", "")
-      .trim();
+    // Extract trainer name from title format "ILP - [Topic] Feedback — [TrainerName]"
+    const trainerName = reportTitle.split(" — ")[1]?.trim() || "";
 
     if (selectedTrainer === "all" || trainerName === selectedTrainer) {
       report.style.display = "block";
@@ -199,7 +201,7 @@ function updateBulkActionsVisibility() {
 }
 
 // Generate report HTML
-function generateReportHTML(report) {
+function generateReportHTML(report, trainingTopic = "Tech Fundamentals") {
   console.log("Report object received:", report);
 
   const output = document.getElementById("output");
@@ -228,7 +230,7 @@ function generateReportHTML(report) {
 
   div.innerHTML = `
     <div class="report-content">
-      <h2>ILP - Tech Fundamentals Feedback — ${report.trainerName || ""}</h2>
+      <h2>ILP - ${trainingTopic} Feedback — ${report.trainerName || ""}</h2>
       <div class="meta">
         <div><strong>Batch Name:</strong> ${report.batchName || ""}</div>
         <div><strong>Total Trainee Count:</strong> ${
@@ -315,10 +317,8 @@ window.downloadPDF = async function (button) {
   pdf.addImage(imgData, "PNG", 10, 10, imgWidth, imgHeight);
 
   const trainerName =
-    reportDiv
-      .querySelector("h2")
-      ?.textContent.replace("ILP - Tech Fundamentals Feedback — ", "")
-      .trim() || "TrainerReport";
+    reportDiv.querySelector("h2")?.textContent.split(" — ")[1]?.trim() ||
+    "TrainerReport";
   pdf.save(`${trainerName}_Feedback_Report.pdf`);
 };
 
