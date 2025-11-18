@@ -1,0 +1,141 @@
+✅ ANALYTICS ISSUES FIXED
+
+═══════════════════════════════════════════════════════════════
+
+PROBLEMS IDENTIFIED:
+1. ❌ Pie chart showing "0" on edges (empty segments)
+2. ❌ Bar chart rating values covered/not visible
+3. ❌ No axis labels/descriptions (X and Y axis unclear)
+
+═══════════════════════════════════════════════════════════════
+
+SOLUTIONS APPLIED:
+
+1. PIE CHART - Hide Zero Values ✅
+   ✓ Updated formatter to skip segments with 0 value
+   ✓ Now shows: Count + Percentage (e.g., "5 (25%)")
+   ✓ Only displays non-zero segments
+   ✓ Code:
+     if (value === 0) return '';
+     percentage = ((value / total) * 100).toFixed(1);
+     return `${value}\n(${percentage}%)`;
+
+2. BAR CHART - Visible Labels ✅
+   ✓ Added layout padding: top 30px (creates space for labels)
+   ✓ Increased offset: 8px (pushes labels further up)
+   ✓ Changed color to blue (#007bff) for better visibility
+   ✓ Proper font size: 13px bold
+   ✓ Format: Shows 2 decimal places (e.g., "4.50")
+   ✓ Code:
+     layout: { padding: { top: 30 } }
+     offset: 8
+     color: "#007bff"
+     formatter: returns value.toFixed(2)
+
+3. AXIS LABELS - Clear Descriptions ✅
+   ✓ Y-Axis: "Rating Score (0-5)" 
+   ✓ X-Axis: "Questions"
+   ✓ Both have bold font for clarity
+   ✓ Code:
+     y: {
+       title: { 
+         display: true, 
+         text: 'Rating Score (0-5)',
+         font: { size: 12, weight: 'bold' }
+       }
+     },
+     x: {
+       title: { 
+         display: true, 
+         text: 'Questions',
+         font: { size: 12, weight: 'bold' }
+       }
+     }
+
+═══════════════════════════════════════════════════════════════
+
+FILE MODIFIED:
+
+📄 src/modules/report-generation.js
+   - PIE CHART (lines 732-774)
+     • Added zero-value filter
+     • Added percentage calculation
+     • Better formatting
+   
+   - BAR CHART (lines 784-843)
+     • Added top padding (30px)
+     • Added offset (8px) for label visibility
+     • Added Y-axis title: "Rating Score (0-5)"
+     • Added X-axis title: "Questions"
+     • Improved label color and formatting
+
+═══════════════════════════════════════════════════════════════
+
+VISUAL RESULTS:
+
+PIE CHART (Before → After):
+BEFORE:  Shows "0" on empty segments
+         Confusing and cluttered
+
+AFTER:   5 (25%)
+         4 (20%)
+         3 (30%)
+         (No "0" labels on edges)
+         ✅ Clean and professional
+
+BAR CHART (Before → After):
+BEFORE:  Values covered under axis
+         X-axis unlabeled
+         Y-axis unlabeled
+
+AFTER:        4.50  ← Clearly visible
+              ▮
+              ▮  4.25
+              ▮   ▮   3.80
+    ├─────────────────────
+    0    Q1   Q2   Q3   Q4
+         ↑ "Questions"
+    ↑ "Rating Score (0-5)"
+    ✅ All values visible
+    ✅ Both axes labeled
+
+═══════════════════════════════════════════════════════════════
+
+TESTING CHECKLIST:
+
+When you test the updated analytics:
+
+PIE CHART:
+- [ ] No "0" values visible on chart
+- [ ] Only segments with data show labels
+- [ ] Format shows: "5 (25%)" for each segment
+- [ ] Professional and clean appearance
+
+BAR CHART:
+- [ ] Values visible ABOVE bars (not covered)
+- [ ] Y-axis labeled: "Rating Score (0-5)"
+- [ ] X-axis labeled: "Questions"
+- [ ] Values show 2 decimal places (e.g., "4.50")
+- [ ] Blue color for labels (#007bff)
+- [ ] Proper spacing between bars and labels
+
+GENERAL:
+- [ ] No console errors
+- [ ] Charts load quickly
+- [ ] Responsive on all screen sizes
+- [ ] Print-friendly
+
+═══════════════════════════════════════════════════════════════
+
+STATUS: ✅ COMPLETE
+
+All analytics issues have been resolved:
+✓ Zero values hidden from pie chart
+✓ Bar chart values visible and not covered
+✓ Axis labels clear and descriptive
+✓ Professional appearance maintained
+
+Date: November 18, 2025
+Ready for testing and deployment.
+
+═══════════════════════════════════════════════════════════════

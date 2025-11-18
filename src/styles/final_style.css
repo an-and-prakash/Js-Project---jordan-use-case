@@ -670,7 +670,7 @@ body {
   background: #fff;
   padding: 10px;
   border-radius: 8px;
-  box-shadow: 0 6px 14px rgba(0,0,0,0.06);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.06);
   min-height: 140px;
   display: flex;
   flex-direction: column;
@@ -693,7 +693,18 @@ body {
 
 .chart-container {
   width: 450px;
-  height: 350px;
-  margin: 20px auto;
+  height: 400px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
 }
 
+.pie-chart-container {
+  width: 380px;
+  height: 360px;
+}
+
+.bar-chart-container {
+  width: 480px;
+  height: 440px;
+}
