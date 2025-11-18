@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>View Report - Trainer Feedback</title>
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../styles/final_style.css" />
+    <link rel="stylesheet" href="../styles/view_report.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  </head>
+
+  <body>
+    <header class="header">
+      <h1>View Saved Report</h1>
+      <div class="header-right">
+        <button onclick="window.location.href='history.html'" class="back-btn">
+          <i class="fa-solid fa-arrow-left"></i> Back to History
+        </button>
+        <button id="logoutBtn" class="logout-btn">Sign Out</button>
+      </div>
+    </header>
+
+    <div id="reportPage">
+      <div id="reportMetadata" class="report-metadata">
+        <!-- Report metadata will be shown here -->
+      </div>
+
+      <!-- Trainer Filter (for multiple trainers) -->
+      <div id="trainerFilterSection" class="hidden"></div>
+
+      <div id="output"></div>
+
+      <div class="bulk-actions">
+        <button onclick="downloadAllReports()">
+          <i class="fa-solid fa-file-pdf"></i> Download All Reports (PDF)
+        </button>
+      </div>
+    </div>
+
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      <div>Loading...</div>
+    </div>
+
+    <script type="module" src="../modules/view_report.js"></script>
+  </body>
+</html>

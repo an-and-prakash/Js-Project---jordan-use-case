@@ -1,0 +1,110 @@
+import { 
+  initializeApp 
+} from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
+
+import { 
+  getAuth, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword,
+  onAuthStateChanged 
+} from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
+
+// Your Firebase config
+const firebaseConfig = {
+  apiKey: "AIzaSyB1WuMsdZdPfuimZ7kfdeaeOsepRYOOSz8",
+  authDomain: "js-project-55861.firebaseapp.com",
+  databaseURL: "https://js-project-55861-default-rtdb.firebaseio.com",
+  projectId: "js-project-55861",
+  storageBucket: "js-project-55861.firebasestorage.app",
+  messagingSenderId: "792815063603",
+  appId: "1:792815063603:web:6d84def26f72886583c946",
+  measurementId: "G-0SCRHVW7Y1"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
+
+// Auto redirect when logged in
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    window.location.href = "desg.html";
+  }
+});
+
+
+// ---------------- LOGIN ---------------- //
+window.login = function () {
+  const email = document.getElementById("username").value.trim();
+  const password = document.getElementById("password").value.trim();
+  const errorMsg = document.getElementById("errorMsg");
+  const successMsg = document.getElementById("successMsg");
+  const loading = document.getElementById("loading");
+  const btn = document.getElementById("loginBtn");
+
+  errorMsg.style.display = "none";
+  successMsg.style.display = "none";
+
+  if (!email || !password) {
+    errorMsg.textContent = "⚠️ Please fill in all fields.";
+    errorMsg.style.display = "block";
+    return;
+  }
+
+  loading.style.display = "block";
+  btn.disabled = true;
+  btn.textContent = "Signing In...";
+
+  signInWithEmailAndPassword(auth, email, password)
+    .then(() => {
+      loading.style.display = "none";
+      successMsg.style.display = "block";
+      btn.textContent = "Redirecting...";
+      setTimeout(() => {
+        window.location.href = "desg.html";
+      }, 1200);
+    })
+    .catch((error) => {
+      loading.style.display = "none";
+      btn.disabled = false;
+      btn.textContent = "Sign In";
+      errorMsg.textContent = error.message;
+      errorMsg.style.display = "block";
+    });
+};
+
+
+// ---------------- SIGNUP ---------------- //
+window.signup = function () {
+  const email = document.getElementById("signupEmail").value.trim();
+  const pass = document.getElementById("signupPassword").value.trim();
+  const confirm = document.getElementById("signupConfirm").value.trim();
+
+  const errorMsg = document.getElementById("signupError");
+  const successMsg = document.getElementById("signupSuccess");
+
+  errorMsg.style.display = "none";
+  successMsg.style.display = "none";
+
+  if (!email || !pass || !confirm) {
+    errorMsg.textContent = "⚠️ All fields are required.";
+    errorMsg.style.display = "block";
+    return;
+  }
+
+  if (pass !== confirm) {
+    errorMsg.textContent = "⚠️ Passwords do not match.";
+    errorMsg.style.display = "block";
+    return;
+  }
+
+  createUserWithEmailAndPassword(auth, email, pass)
+    .then(() => {
+      successMsg.textContent = "Account created! You can now log in.";
+      successMsg.style.display = "block";
+    })
+    .catch((error) => {
+      errorMsg.textContent = error.message;
+      errorMsg.style.display = "block";
+    });
+};

@@ -43,6 +43,14 @@ document
   .getElementById("fileInput")
   ?.addEventListener("change", handleFile, false);
 
+// small helper to create safe element ids
+function safeId(s) {
+  return (s || "").replace(/\s+/g, "_").replace(/[^\w\-]/g, "");
+}
+
+// store chart instances so we can destroy when rerendering
+window._feedbackCharts = window._feedbackCharts || {};
+
 function handleFile(e) {
   const file = e.target.files[0];
   if (!file) return;
@@ -79,33 +87,42 @@ function handleFile(e) {
 }
 
 function analyzeFileStructure(headers) {
-  const validHeaders = headers.slice(5, headers.length - 3);
-  const pattern = /\.+([^.\d]+)$/;
+  // First, try to detect multiple trainers pattern (headers with ".." followed by trainer name)
+  const multiTrainerPattern = /\.\.([^.\d]+)$/;
   const trainerGroups = {};
   const allTrainers = new Set();
 
-  validHeaders.forEach((header) => {
-    const match = header.match(pattern);
-    if (match) {
-      const trainer = match[1].trim();
-      allTrainers.add(trainer);
-      const question = header.replace(pattern, "").trim();
-      if (!trainerGroups[question]) trainerGroups[question] = [];
-      trainerGroups[question].push(trainer);
-    }
-  });
+  // Check if this is a multiple trainer file
+  const hasMultipleTrainers = headers.some((h) => multiTrainerPattern.test(h));
 
-  const orderedGroups = {};
-  validHeaders.forEach((header) => {
-    const base = header.replace(pattern, "").trim();
-    if (trainerGroups[base] && !orderedGroups[base]) {
-      orderedGroups[base] = trainerGroups[base];
-    }
-  });
+  if (hasMultipleTrainers) {
+    // Skip first 5 columns (Id, Start time, Completion time, Email, Name)
+    const validHeaders = headers.slice(5);
 
-  console.log("Ordered Groups:", orderedGroups);
+    validHeaders.forEach((header) => {
+      const match = header.match(multiTrainerPattern);
+      if (match) {
+        const trainer = match[1].trim();
+        allTrainers.add(trainer);
+        // Extract question by removing the trainer suffix
+        const question = header.replace(multiTrainerPattern, "").trim();
+        if (!trainerGroups[question]) trainerGroups[question] = [];
+        trainerGroups[question].push(trainer);
+      }
+    });
 
-  if (Object.keys(orderedGroups).length > 0) {
+    // Preserve order of questions as they appear
+    const orderedGroups = {};
+    validHeaders.forEach((header) => {
+      const base = header.replace(multiTrainerPattern, "").trim();
+      if (trainerGroups[base] && !orderedGroups[base]) {
+        orderedGroups[base] = trainerGroups[base];
+      }
+    });
+
+    console.log("Multiple Trainers Detected:", Array.from(allTrainers));
+    console.log("Question Groups:", orderedGroups);
+
     return {
       type: "multiple_trainers",
       trainers: Array.from(allTrainers),
@@ -114,25 +131,47 @@ function analyzeFileStructure(headers) {
     };
   }
 
-  const singleTrainerQuestion = headers[5]?.trim();
-  const restFields = validHeaders.slice(1);
+  // Single trainer detection
+  // Dynamically identify rating columns by excluding metadata and comment columns
+  const excludedKeywords = [
+    "id",
+    "start time",
+    "completion time",
+    "email",
+    "name",
+    "what went well",
+    "what needs improvement",
+    "what less liked",
+    "arrangements",
+    "location",
+    "seating",
+    "projector",
+    "overall quality",
+  ];
+
+  const ratingHeaders = headers.filter((header, index) => {
+    const normalized = header.toLowerCase();
+    // Skip first 5 columns (metadata)
+    if (index < 5) return false;
+    // Skip if contains excluded keywords
+    return !excludedKeywords.some((keyword) => normalized.includes(keyword));
+  });
+
+  console.log("Single Trainer - Rating Headers:", ratingHeaders);
 
   return {
     type: "single_trainer",
-    mainQuestion: singleTrainerQuestion,
-    additionalFields: restFields,
-    questionCount: headers.slice(7, headers.length - 4).length,
+    questionCount: ratingHeaders.length,
+    ratingHeaders: ratingHeaders,
   };
 }
 
 function extractQuestionsFromHeaders(headers, analysis) {
   questions.length = 0;
-
   if (analysis.type === "multiple_trainers") {
     const validHeaders = headers.slice(5, headers.length - 3);
     const pattern = /\.+([^.\d]+)$/;
     const seenQuestions = new Set();
-
     validHeaders.forEach((header) => {
       const baseQuestion = header.replace(pattern, "").trim();
       if (baseQuestion && !seenQuestions.has(baseQuestion)) {
@@ -141,10 +180,9 @@ function extractQuestionsFromHeaders(headers, analysis) {
       }
     });
   } else {
-    const ratingHeaders = headers.slice(7, headers.length - 4);
+    const ratingHeaders = headers.slice(8, headers.length - 3);
     questions.push(...ratingHeaders.map((h) => h.trim()).filter((q) => q));
   }
-
   console.log("Extracted Questions from Excel:", questions);
   window.renderQuestionList?.();
 }
@@ -258,7 +296,7 @@ export function openOutlookWebWithEmails(trainerName) {
     `Follow-up: Training Feedback - ${trainerName}`
   );
   const body = encodeURIComponent(
-    `Dear Team,\n\nThis is a follow-up regarding the recent training session conducted by ${trainerName}. We would like to discuss your feedback to help us improve our training programs.\n\nBest regards,\nJordan S Ben,\nLearing and development`
+    `Dear Team,\n\nThis is a follow-up regarding the recent training session conducted by ${trainerName}. We would like to discuss your feedback to help us improve our training programs.\n\nBest regards,\n[your name],\nLearing and development`
   );
 
   const outlookWebUrl = `https://outlook.office.com/mail/deeplink/compose?to=${emails}&subject=${subject}&body=${body}`;
@@ -332,7 +370,7 @@ async function generateSingleTrainerReport(trainerName) {
   if (bulkActions) bulkActions.style.display = "none";
 
   const headers = Object.keys(excelRows[0]);
-  const ratingColumns = headers.slice(7, headers.length - 4);
+  const ratingColumns = headers.slice(8, headers.length - 3);
 
   const studentsWithVeryPoor = getStudentsWithVeryPoorRating(
     trainerName,
@@ -573,6 +611,7 @@ function generateReport(trainerName, columns, commentsWell, commentsImprove) {
   div.innerHTML = `
   <div class="report-content">
     <h2>ILP - ${trainingTopic} Feedback — ${trainerName}</h2>
+
     <div class="meta">
       <div><strong>Batch Name:</strong> ILP 2024-25 Batch</div>
       <div><strong>Total Trainee Count:</strong> ${excelRows.length}</div>
@@ -584,6 +623,7 @@ function generateReport(trainerName, columns, commentsWell, commentsImprove) {
           : ""
       }
     </div>
+
     <table>
       <tr>
         <th>Category</th>
@@ -608,42 +648,54 @@ function generateReport(trainerName, columns, commentsWell, commentsImprove) {
         )
         .join("")}
     </table>
+
+    <!-- -----------------------------
+         ⭐ ANALYTICS SECTION ⭐
+         ----------------------------- -->
+    <div class="analytics-section">
+      <h3>Analytics</h3>
+
+      <div class="chart-container">
+        <canvas id="pie_${trainerName}"></canvas>
+      </div>
+
+      <div class="chart-container">
+        <canvas id="bar_${trainerName}"></canvas>
+      </div>
+    </div>
+
     ${
       commentsWell.length > 0
-        ? `
-    <div class="section">
-      <h3>What went well / things you most liked</h3>
-      <ul>${commentsWell.map((c) => `<li>${c}</li>`).join("")}</ul>
-    </div>
-    `
+        ? `<div class="section">
+        <h3>What went well / things you most liked</h3>
+        <ul>${commentsWell.map((c) => `<li>${c}</li>`).join("")}</ul>
+    </div>`
         : ""
     }
+
     ${
       commentsImprove.length > 0
-        ? `
-    <div class="section">
-      <h3>What needs improvement</h3>
-      <ul>${commentsImprove.map((c) => `<li>${c}</li>`).join("")}</ul>
-    </div>
-    `
+        ? `<div class="section">
+        <h3>What needs improvement</h3>
+        <ul>${commentsImprove.map((c) => `<li>${c}</li>`).join("")}</ul>
+    </div>`
         : ""
     }
+
     ${
       studentsWithVeryPoor.length > 0
-        ? `
-    <div class="section">
-      <h3>Students with "Very Poor" Ratings</h3>
-      <p>The following students gave "Very Poor" ratings:</p>
-      <ul>
-        ${studentsWithVeryPoor
-          .map((student) => `<li>${student.name} (${student.email})</li>`)
-          .join("")}
-      </ul>
-    </div>
-    `
+        ? `<div class="section">
+            <h3>Students with "Very Poor" Ratings</h3>
+            <ul>
+              ${studentsWithVeryPoor
+                .map((s) => `<li>${s.name} (${s.email})</li>`)
+                .join("")}
+            </ul>
+          </div>`
         : ""
     }
   </div>
+
   <div class="report-actions">
     <button onclick="downloadPDF(this)"><i class="fa-solid fa-arrow-down"></i> Download PDF</button>
     ${
@@ -662,6 +714,68 @@ function generateReport(trainerName, columns, commentsWell, commentsImprove) {
 `;
 
   if (output) output.appendChild(div);
+
+  // Build Pie Data
+  const pieData = {
+    Excellent: 0,
+    "Very Good": 0,
+    Good: 0,
+    Average: 0,
+    "Very Poor": 0,
+  };
+
+  Object.values(ratings).forEach((r) => {
+    Object.keys(r).forEach((k) => (pieData[k] += r[k]));
+  });
+
+  // PIE CHART
+  new Chart(document.getElementById("pie_" + trainerName), {
+    type: "pie",
+    data: {
+      labels: Object.keys(pieData),
+      datasets: [
+        {
+          data: Object.values(pieData),
+        },
+      ],
+    },
+  });
+
+  // BAR CHART - AVERAGE RATING PER QUESTION
+  const barLabels = columns.map((_, i) => "Q" + (i + 1));
+  const barData = columns.map((c, i) => {
+    let total = 0;
+    let count = 0;
+    excelRows.forEach((r) => {
+      const nv = ratingMap[NORMALIZE(r[c])];
+      if (nv) {
+        total += nv;
+        count++;
+      }
+    });
+    return count ? (total / count).toFixed(2) : 0;
+  });
+
+  new Chart(document.getElementById("bar_" + trainerName), {
+    type: "bar",
+    data: {
+      labels: barLabels,
+      datasets: [
+        {
+          label: "Average Rating",
+          data: barData,
+        },
+      ],
+    },
+    options: {
+      scales: {
+        y: {
+          suggestedMin: 0,
+          suggestedMax: 5,
+        },
+      },
+    },
+  });
 
   if (fileType === "single_trainer") {
     document.getElementById("dashboardPage")?.classList.add("hidden");
