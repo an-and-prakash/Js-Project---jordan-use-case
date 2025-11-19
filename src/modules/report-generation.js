@@ -317,10 +317,10 @@ export function copyEmailsToClipboard(trainerName) {
 async function summarizeWithGemini(label, comments) {
   if (!comments.length) return [`No ${label} comments available.`];
 
-  // const API_KEY = window._env_.geminiApiKey;
-  // const ENDPOINT = window._env_.geminiEndpoint;
-  const API_KEY = " window._env_.geminiApiKey";
-  const ENDPOINT = "window._env_.geminiEndpoint";
+  const API_KEY = window._env_.geminiApiKey;
+  const ENDPOINT = window._env_.geminiEndpoint;
+  // const API_KEY = " window._env_.geminiApiKey";
+  // const ENDPOINT = "window._env_.geminiEndpoint";
   const feedbackText = comments.join("\n");
   const prompt = `Summarize the following trainee feedback about "${label}" into 3-4 clear bullet points. Return only bullet points:\n\n${feedbackText}`;
 
