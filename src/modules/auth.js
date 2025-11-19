@@ -1,15 +1,22 @@
+// ==========================================
+// AUTH.JS — Firebase Authentication With Email Verification
+// ==========================================
+
 import { 
   initializeApp 
 } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
 
 import { 
-  getAuth, 
-  signInWithEmailAndPassword, 
+  getAuth,
+  signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  onAuthStateChanged 
+  sendEmailVerification,
+  signOut,
+  onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
 
-// Your Firebase config
+
+// ---------------- FIREBASE CONFIG ---------------- //
 const firebaseConfig = {
   apiKey: "AIzaSyB1WuMsdZdPfuimZ7kfdeaeOsepRYOOSz8",
   authDomain: "js-project-55861.firebaseapp.com",
@@ -25,15 +32,17 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
 
-// Auto redirect when logged in
+// ---------------- AUTO REDIRECT (ONLY IF VERIFIED) ---------------- //
 onAuthStateChanged(auth, (user) => {
-  if (user) {
+  if (user && user.emailVerified) {
     window.location.href = "desg.html";
   }
 });
 
 
-// ---------------- LOGIN ---------------- //
+// =======================================================
+// LOGIN FUNCTION
+// =======================================================
 window.login = function () {
   const email = document.getElementById("username").value.trim();
   const password = document.getElementById("password").value.trim();
@@ -56,13 +65,53 @@ window.login = function () {
   btn.textContent = "Signing In...";
 
   signInWithEmailAndPassword(auth, email, password)
-    .then(() => {
+    .then((userCredential) => {
+      const user = userCredential.user;
+
+      // BLOCK LOGIN IF NOT VERIFIED
+      if (!user.emailVerified) {
+        loading.style.display = "none";
+        btn.disabled = false;
+        btn.textContent = "Sign In";
+
+        errorMsg.innerHTML = `
+           Email not verified. Please check your inbox.<br><br>
+          <button id="resendBtn" style="
+            padding: 6px 10px;
+            border: none;
+            background: #007bff;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+          ">Resend Verification Email</button>
+        `;
+        errorMsg.style.display = "block";
+
+        // RESEND VERIFICATION
+        document.getElementById("resendBtn").onclick = () => {
+          sendEmailVerification(user)
+            .then(() => {
+              successMsg.textContent = "Verification email resent!";
+              successMsg.style.display = "block";
+            })
+            .catch((err) => {
+              errorMsg.textContent = err.message;
+              errorMsg.style.display = "block";
+            });
+        };
+
+        signOut(auth); 
+        return;
+      }
+
+      // VERIFIED → PROCEED
       loading.style.display = "none";
       successMsg.style.display = "block";
       btn.textContent = "Redirecting...";
+
       setTimeout(() => {
         window.location.href = "desg.html";
-      }, 1200);
+      }, 1000);
     })
     .catch((error) => {
       loading.style.display = "none";
@@ -74,7 +123,9 @@ window.login = function () {
 };
 
 
-// ---------------- SIGNUP ---------------- //
+// =======================================================
+// SIGNUP FUNCTION WITH EMAIL VERIFICATION
+// =======================================================
 window.signup = function () {
   const email = document.getElementById("signupEmail").value.trim();
   const pass = document.getElementById("signupPassword").value.trim();
@@ -99,9 +150,20 @@ window.signup = function () {
   }
 
   createUserWithEmailAndPassword(auth, email, pass)
-    .then(() => {
-      successMsg.textContent = "Account created! You can now log in.";
-      successMsg.style.display = "block";
+    .then((userCredential) => {
+      const user = userCredential.user;
+
+      // SEND VERIFICATION EMAIL
+      sendEmailVerification(user)
+        .then(() => {
+          successMsg.textContent =
+            "Account created! A verification email has been sent. Please verify before logging in.";
+          successMsg.style.display = "block";
+        })
+        .catch((err) => {
+          errorMsg.textContent = "Failed to send verification email: " + err.message;
+          errorMsg.style.display = "block";
+        });
     })
     .catch((error) => {
       errorMsg.textContent = error.message;

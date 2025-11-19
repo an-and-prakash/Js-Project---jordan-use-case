@@ -1,9 +1,5 @@
 /**
- * Environment Configuration Loader
- *
- * This module loads environment variables from the .env file
- * and provides them to the application.
- *
+
  * For development: Variables are loaded from window._env_ (set via build process)
  * For production: Variables should be injected at runtime
  */

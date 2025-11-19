@@ -402,8 +402,8 @@ async function generateSingleTrainerReport(trainerName) {
   const output = document.getElementById("output");
   if (output) output.innerHTML = "";
 
-  const API_KEY = envConfig.geminiApiKey;
-  const ENDPOINT = envConfig.geminiEndpoint;
+  const API_KEY = window._env_.geminiApiKey;
+  const ENDPOINT = window._env_.geminiEndpoint;
 
   async function summarizeWithGemini(label, comments) {
     if (!comments.length) return [`No ${label} comments available.`];
@@ -497,8 +497,8 @@ async function generateMultipleTrainerReports() {
   const output = document.getElementById("output");
   if (output) output.innerHTML = "";
 
-  const API_KEY = envConfig.geminiApiKey;
-  const ENDPOINT = envConfig.geminiEndpoint;
+  const API_KEY = window._env_.geminiApiKey;
+  const ENDPOINT = window._env_.geminiEndpoint;
 
   async function summarizeWithGemini(label, comments) {
     if (!comments.length) return [`No ${label} comments available.`];
@@ -605,7 +605,7 @@ function generateReport(trainerName, columns, commentsWell, commentsImprove) {
   const studentsWithVeryPoor = studentsWithVeryPoorRatings[trainerName] || [];
 
   // --- create safe ids and build the report HTML ---
-  const safeTrainer = safeId(trainerName); // ensure valid DOM ids
+  const safeTrainer = safeId(trainerName);
   const output = document.getElementById("output");
   const div = document.createElement("div");
   div.className = "report";
@@ -625,6 +625,7 @@ function generateReport(trainerName, columns, commentsWell, commentsImprove) {
           : ""
       }
     </div>
+    
     <table>
       <tr>
         <th>Category</th>
@@ -650,7 +651,6 @@ function generateReport(trainerName, columns, commentsWell, commentsImprove) {
         .join("")}
     </table>
 
-    
     <div class="analytics-section">
       <div style="display: flex; gap: 20px; justify-content: center; align-items: flex-start; flex-wrap: wrap;">
         <div class="chart-container pie-chart-container" style="width:360px; height:360px;">
@@ -663,15 +663,65 @@ function generateReport(trainerName, columns, commentsWell, commentsImprove) {
       </div>
     </div>
 
-    <!-- comments and other sections unchanged -->
+    ${
+      commentsWell.length > 0
+        ? `
+    <div class="section">
+      <h3>What went well / things you most liked</h3>
+      <ul>${commentsWell.map((c) => `<li>${c}</li>`).join("")}</ul>
+    </div>
+    `
+        : ""
+    }
+    
+    ${
+      commentsImprove.length > 0
+        ? `
+    <div class="section">
+      <h3>What needs improvement</h3>
+      <ul>${commentsImprove.map((c) => `<li>${c}</li>`).join("")}</ul>
+    </div>
+    `
+        : ""
+    }
+    
+    ${
+      studentsWithVeryPoor.length > 0
+        ? `
+    <div class="section">
+      <h3>Students with "Very Poor" Ratings</h3>
+      <p>The following students gave "Very Poor" ratings:</p>
+      <ul>
+        ${studentsWithVeryPoor
+          .map((student) => `<li>${student.name} (${student.email})</li>`)
+          .join("")}
+      </ul>
+    </div>
+    `
+        : ""
+    }
   </div>
-
-  <div class="report-actions"> ... </div>
-  `;
+  
+  <div class="report-actions">
+    <button onclick="downloadPDF(this)"><i class="fa-solid fa-arrow-down"></i> Download PDF</button>
+    ${
+      studentsWithVeryPoor.length > 0
+        ? `
+      <button onclick="openOutlookWebWithEmails('${trainerName}')" class="email-btn">
+        <i class="fa-solid fa-envelope"></i> Open Outlook with Emails
+      </button>
+      <button onclick="copyEmailsToClipboard('${trainerName}')" class="copy-btn">
+        <i class="fa-solid fa-copy"></i> Copy Emails
+      </button>
+    `
+        : ""
+    }
+  </div>
+`;
 
   if (output) output.appendChild(div);
 
-  // Build Pie Data (unchanged)
+  // Build Pie Data
   const pieData = {
     Excellent: 0,
     "Very Good": 0,
@@ -683,7 +733,7 @@ function generateReport(trainerName, columns, commentsWell, commentsImprove) {
     Object.keys(r).forEach((k) => (pieData[k] += r[k]));
   });
 
-  // PIE CHART: make it fill its container
+  // PIE CHART
   new Chart(document.getElementById("pie_" + safeTrainer), {
     type: "pie",
     plugins: [ChartDataLabels],
@@ -730,7 +780,7 @@ function generateReport(trainerName, columns, commentsWell, commentsImprove) {
     },
   });
 
-  // BAR CHART - AVERAGE RATING PER QUESTION (bigger & clearer)
+  // BAR CHART - AVERAGE RATING PER QUESTION
   const barLabels = columns.map((_, i) => "Q" + (i + 1));
   const barData = columns.map((c, i) => {
     let total = 0,
@@ -746,13 +796,11 @@ function generateReport(trainerName, columns, commentsWell, commentsImprove) {
   });
 
   const barCanvas = document.getElementById("bar_" + safeTrainer);
-  // Ensure parent container size is enforced (helps charts render large)
   if (barCanvas && barCanvas.parentElement) {
     barCanvas.parentElement.style.width =
       barCanvas.parentElement.style.width || "720px";
     barCanvas.parentElement.style.height =
       barCanvas.parentElement.style.height || "380px";
-    // let chart fill the parent
     barCanvas.style.width = "100%";
     barCanvas.style.height = "100%";
   }
@@ -766,16 +814,15 @@ function generateReport(trainerName, columns, commentsWell, commentsImprove) {
         {
           label: "Average Rating",
           data: barData,
-          // visual tuning for bigger bars
           backgroundColor: "#4C9EFF",
-          barThickness: 34, // fixed thickness for clarity
-          maxBarThickness: 60, // cap thickness on wide screens
+          barThickness: 34,
+          maxBarThickness: 60,
         },
       ],
     },
     options: {
       responsive: true,
-      maintainAspectRatio: false, // allow filling the parent container
+      maintainAspectRatio: false,
       layout: { padding: { top: 10, right: 10, left: 10, bottom: 10 } },
       scales: {
         y: {
@@ -803,7 +850,7 @@ function generateReport(trainerName, columns, commentsWell, commentsImprove) {
           display: true,
           text: "Average Rating Per Question",
           font: { size: 14, weight: "bold" },
-          padding: { bottom: 35,left:20 },
+          padding: { bottom: 35, left: 20 },
         },
         legend: { display: false },
         datalabels: {
@@ -818,6 +865,7 @@ function generateReport(trainerName, columns, commentsWell, commentsImprove) {
     },
   });
 
+  // Switch to report page for single trainer
   if (fileType === "single_trainer") {
     document.getElementById("dashboardPage")?.classList.add("hidden");
     document.getElementById("reportPage")?.classList.remove("hidden");
