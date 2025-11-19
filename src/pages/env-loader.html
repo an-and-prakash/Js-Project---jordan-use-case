@@ -1,0 +1,47 @@
+<!-- Environment Variables Loader -->
+<!-- Include this script before your main application scripts -->
+<!-- It reads from the .env file and populates window._env_ -->
+<script>
+  /**
+   * Load environment variables from .env file
+   * This is needed for client-side apps that can't use dotenv packages
+   */
+  (async function loadEnvVariables() {
+    try {
+      // For development environments
+      const response = await fetch(".env");
+      if (!response.ok) {
+        console.warn(
+          ".env file not found. Using environment variables from window._env_"
+        );
+        return;
+      }
+
+      const envContent = await response.text();
+      window._env_ = window._env_ || {};
+
+      // Parse the .env file
+      envContent.split("\n").forEach((line) => {
+        // Remove comments and trim whitespace
+        const cleanLine = line.split("#")[0].trim();
+
+        if (cleanLine) {
+          const [key, ...valueParts] = cleanLine.split("=");
+          const trimmedKey = key.trim();
+          const trimmedValue = valueParts.join("=").trim();
+
+          // Remove surrounding quotes if present
+          const finalValue = trimmedValue.replace(/^["']|["']$/g, "");
+
+          if (trimmedKey) {
+            window._env_[trimmedKey] = finalValue;
+          }
+        }
+      });
+
+      console.log("Environment variables loaded successfully");
+    } catch (error) {
+      console.error("Error loading environment variables:", error);
+    }
+  })();
+</script>

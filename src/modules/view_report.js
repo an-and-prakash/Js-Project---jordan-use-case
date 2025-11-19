@@ -12,16 +12,7 @@ import {
   get,
 } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyB1WuMsdZdPfuimZ7kfdeaeOsepRYOOSz8",
-  authDomain: "js-project-55861.firebaseapp.com",
-  databaseURL: "https://js-project-55861-default-rtdb.firebaseio.com",
-  projectId: "js-project-55861",
-  storageBucket: "js-project-55861.firebasestorage.app",
-  messagingSenderId: "792815063603",
-  appId: "1:792815063603:web:6d84def26f72886583c946",
-  measurementId: "G-0SCRHVW7Y1",
-};
+const firebaseConfig = window._env_;
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -33,7 +24,7 @@ const ratingLabels = ["Excellent", "Very Good", "Good", "Average", "Very Poor"];
 // Auth check
 onAuthStateChanged(auth, (user) => {
   if (!user) {
-    window.location.href = "login.html";
+    window.location.href = "../../index.html";
   } else {
     loadReport();
   }
@@ -43,7 +34,7 @@ onAuthStateChanged(auth, (user) => {
 document.getElementById("logoutBtn").addEventListener("click", () => {
   signOut(auth)
     .then(() => {
-      window.location.href = "login.html";
+      window.location.href = "../../index.html";
     })
     .catch((error) => {
       console.error("Error signing out:", error);
@@ -89,8 +80,6 @@ async function loadReport() {
 
 // Display report metadata
 function displayReportMetadata() {
-
-
   const metadataDiv = document.getElementById("reportMetadata");
 
   console.log("hi");
@@ -118,13 +107,12 @@ function displayReportMetadata() {
         </div>
     `;
 
-    console.log("hi");
+  console.log("hi");
 }
 
 // Display report
 function displayReport() {
-
-    console.log("hi");
+  console.log("hi");
   displayReportMetadata();
 
   const output = document.getElementById("output");
@@ -135,13 +123,14 @@ function displayReport() {
     const trainerNames = currentReportData.reports.map((r) => r.trainerName);
     createTrainerFilterDropdown(trainerNames);
   }
-console.log("hi");
+  console.log("hi");
   // Generate each report
   currentReportData.reports.forEach((report) => {
-    generateReportHTML(report);
+    generateReportHTML(
+      report,
+      currentReportData.trainingTopic || "Tech Fundamentals"
+    );
   });
-
-  
 
   document.getElementById("reportPage").classList.remove("hidden");
 
@@ -174,9 +163,8 @@ window.filterReportsByTrainer = function () {
 
   allReports.forEach((report) => {
     const reportTitle = report.querySelector("h2").textContent;
-    const trainerName = reportTitle
-      .replace("ILP - Tech Fundamentals Feedback — ", "")
-      .trim();
+    // Extract trainer name from title format "ILP - [Topic] Feedback — [TrainerName]"
+    const trainerName = reportTitle.split(" — ")[1]?.trim() || "";
 
     if (selectedTrainer === "all" || trainerName === selectedTrainer) {
       report.style.display = "block";
@@ -204,14 +192,16 @@ function updateBulkActionsVisibility() {
 }
 
 // Generate report HTML
-function generateReportHTML(report) {
+function generateReportHTML(report, trainingTopic = "Tech Fundamentals") {
   console.log("Report object received:", report);
 
   const output = document.getElementById("output");
   const div = document.createElement("div");
   div.className = "report";
 
-  const tableRows = (report.tableData || []).map(row => `
+  const tableRows = (report.tableData || [])
+    .map(
+      (row) => `
     <tr>
       <td style="text-align:left">${row.category || ""}</td>
       <td>${row.excellent || 0}</td>
@@ -221,46 +211,68 @@ function generateReportHTML(report) {
       <td>${row.veryPoor || 0}</td>
       <td>${row.total || 0}</td>
     </tr>
-  `).join("");
+  `
+    )
+    .join("");
 
   const commentsWell = report.commentsWell || [];
   const commentsImprove = report.commentsImprove || [];
-  const studentsWithPoor = report.studentsWithPoorRatings || [];
+  const TraineesWithPoor = report.TraineesWithPoorRatings || [];
 
   div.innerHTML = `
     <div class="report-content">
-      <h2>ILP - Tech Fundamentals Feedback — ${report.trainerName || ""}</h2>
+      <h2>ILP - ${trainingTopic} Feedback — ${report.trainerName || ""}</h2>
       <div class="meta">
         <div><strong>Batch Name:</strong> ${report.batchName || ""}</div>
-        <div><strong>Total Trainee Count:</strong> ${report.traineeCount || 0}</div>
+        <div><strong>Total Trainee Count:</strong> ${
+          report.traineeCount || 0
+        }</div>
         <div><strong>Trainer Name:</strong> ${report.trainerName || ""}</div>
-        <div><strong>Overall Program Rating (out of 5):</strong> ${report.overallRating || 0}</div>
-        ${studentsWithPoor.length > 0 ? `<div><strong>Students with "Very Poor" ratings:</strong> ${studentsWithPoor.length}</div>` : ""}
+        <div><strong>Overall Program Rating (out of 5):</strong> ${
+          report.overallRating || 0
+        }</div>
+        ${
+          TraineesWithPoor.length > 0
+            ? `<div><strong>Trainees with "Very Poor" ratings:</strong> ${TraineesWithPoor.length}</div>`
+            : ""
+        }
       </div>
       <table>
         <tr>
           <th>Category</th>
-          ${ratingLabels.map(l => `<th>${l}</th>`).join("")}
+          ${ratingLabels.map((l) => `<th>${l}</th>`).join("")}
           <th>Total</th>
         </tr>
         ${tableRows}
       </table>
-      ${commentsWell.length > 0 ? `
+      ${
+        commentsWell.length > 0
+          ? `
         <div class="section">
           <h3>What went well / things you most liked</h3>
-          <ul>${commentsWell.map(c => `<li>${c}</li>`).join("")}</ul>
-        </div>` : ""}
-      ${commentsImprove.length > 0 ? `
+          <ul>${commentsWell.map((c) => `<li>${c}</li>`).join("")}</ul>
+        </div>`
+          : ""
+      }
+      ${
+        commentsImprove.length > 0
+          ? `
         <div class="section">
           <h3>What needs improvement</h3>
-          <ul>${commentsImprove.map(c => `<li>${c}</li>`).join("")}</ul>
-        </div>` : ""}
-      ${studentsWithPoor.length > 0 ? `
+          <ul>${commentsImprove.map((c) => `<li>${c}</li>`).join("")}</ul>
+        </div>`
+          : ""
+      }
+      ${
+        TraineesWithPoor.length > 0
+          ? `
         <div class="section">
-          <h3>Students with "Very Poor" Ratings</h3>
-          <p>The following students gave "Very Poor" ratings:</p>
-          <ul>${studentsWithPoor.map(s => `<li>${s}</li>`).join("")}</ul>
-        </div>` : ""}
+          <h3>Trainees with "Very Poor" Ratings</h3>
+          <p>The following Trainees gave "Very Poor" ratings:</p>
+          <ul>${TraineesWithPoor.map((s) => `<li>${s}</li>`).join("")}</ul>
+        </div>`
+          : ""
+      }
     </div>
     <div class="report-actions">
       <button onclick="downloadPDF(this)">
@@ -272,7 +284,6 @@ function generateReportHTML(report) {
   output.appendChild(div);
   console.log("Finished generateReportHTML");
 }
-
 
 // Download single report as PDF
 window.downloadPDF = async function (button) {
@@ -297,10 +308,8 @@ window.downloadPDF = async function (button) {
   pdf.addImage(imgData, "PNG", 10, 10, imgWidth, imgHeight);
 
   const trainerName =
-    reportDiv
-      .querySelector("h2")
-      ?.textContent.replace("ILP - Tech Fundamentals Feedback — ", "")
-      .trim() || "TrainerReport";
+    reportDiv.querySelector("h2")?.textContent.split(" — ")[1]?.trim() ||
+    "TrainerReport";
   pdf.save(`${trainerName}_Feedback_Report.pdf`);
 };
 

@@ -160,6 +160,34 @@ input[type="text"] {
   border-left: 4px solid #e74c3c;
 }
 
+/* Overall rating color badges */
+.rating-success {
+  display: inline-block;
+  background: #e6f9f0;
+  color: #155724;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-weight: 700;
+}
+
+.rating-warning {
+  display: inline-block;
+  background: #fff3cd;
+  color: #856404;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-weight: 700;
+}
+
+.rating-danger {
+  display: inline-block;
+  background: #f8d7da;
+  color: #721c24;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-weight: 700;
+}
+
 /* Report cards */
 .report {
   background: #fff;
@@ -642,4 +670,69 @@ body {
 
 .secondary-btn:hover {
   background: #e0e0e0;
+}
+
+/* layout for report + analytics */
+.report-content-with-analytics {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+/* main report content keeps most width */
+.report-content-with-analytics .report-content {
+  flex: 1 1 60%;
+  min-width: 320px;
+}
+
+/* analytics column */
+.report-content-with-analytics .analytics {
+  flex: 0 0 360px; /* adjust width as needed */
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* individual chart cards */
+.chart-card {
+  background: #fff;
+  padding: 10px;
+  border-radius: 8px;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.06);
+  min-height: 140px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* keep canvas responsive to card */
+.chart-card canvas {
+  width: 100% !important;
+  height: 140px !important;
+}
+
+.analytics-section {
+  display: flex;
+  margin-top: 30px;
+  padding: 20px;
+  background: #f7f7f7;
+  border-radius: 8px;
+}
+
+.chart-container {
+  width: 450px;
+  height: 400px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.pie-chart-container {
+  width: 380px;
+  height: 360px;
+}
+
+.bar-chart-container {
+  width: 480px;
+  height: 440px;
 }
