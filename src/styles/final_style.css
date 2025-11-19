@@ -160,6 +160,34 @@ input[type="text"] {
   border-left: 4px solid #e74c3c;
 }
 
+/* Overall rating color badges */
+.rating-success {
+  display: inline-block;
+  background: #e6f9f0;
+  color: #155724;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-weight: 700;
+}
+
+.rating-warning {
+  display: inline-block;
+  background: #fff3cd;
+  color: #856404;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-weight: 700;
+}
+
+.rating-danger {
+  display: inline-block;
+  background: #f8d7da;
+  color: #721c24;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-weight: 700;
+}
+
 /* Report cards */
 .report {
   background: #fff;

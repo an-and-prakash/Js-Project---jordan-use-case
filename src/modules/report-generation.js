@@ -1,25 +1,20 @@
-// ===================================
-// FILE 2: report-generation.js
-// Excel file processing, report generation, and PDF exports
-// ===================================
-
 import {
-  db,
   questions,
   showLoading,
   hideLoading,
   showMessage,
 } from "./firebase-config.js";
-import { envConfig } from "./env-config.js";
 
-// Global variables
 export let excelRows = [];
 export let fileType = null;
 export let detectedTrainers = [];
 export let studentsWithVeryPoorRatings = {};
-export let trainingTopic = "Tech Fundamentals"; // Default topic, can be changed by user
+export let trainingTopic = "Tech Fundamentals";
 
-// Constants
+// ===================================
+// CONSTANTS & UTILITIES
+// ===================================
+
 const NORMALIZE = (s) => ("" + (s || "")).toString().trim().toLowerCase();
 
 const ratingMap = {
@@ -35,6 +30,20 @@ const ratingMap = {
 
 const ratingLabels = ["Excellent", "Very Good", "Good", "Average", "Very Poor"];
 
+const CHART_COLORS = {
+  pie: ["#001f3f", "#003d7a", "#0051b3", "#0066cc", "#4C9EFF"],
+  bar: "#4C9EFF",
+};
+
+const safeId = (s) => (s || "").replace(/\s+/g, "_").replace(/[^\w\-]/g, "");
+
+const findColumn = (keywords) => {
+  const headers = Object.keys(excelRows[0] || {});
+  return headers.find((h) =>
+    keywords.some((kw) => h.toLowerCase().includes(kw))
+  );
+};
+
 // ===================================
 // FILE HANDLING
 // ===================================
@@ -42,14 +51,6 @@ const ratingLabels = ["Excellent", "Very Good", "Good", "Average", "Very Poor"];
 document
   .getElementById("fileInput")
   ?.addEventListener("change", handleFile, false);
-
-// small helper to create safe element ids
-function safeId(s) {
-  return (s || "").replace(/\s+/g, "_").replace(/[^\w\-]/g, "");
-}
-
-// store chart instances so we can destroy when rerendering
-window._feedbackCharts = window._feedbackCharts || {};
 
 function handleFile(e) {
   const file = e.target.files[0];
@@ -87,52 +88,52 @@ function handleFile(e) {
 }
 
 function analyzeFileStructure(headers) {
-  // First, try to detect multiple trainers pattern (headers with ".." followed by trainer name)
   const multiTrainerPattern = /\.\.([^.\d]+)$/;
-  const trainerGroups = {};
-  const allTrainers = new Set();
-
-  // Check if this is a multiple trainer file
   const hasMultipleTrainers = headers.some((h) => multiTrainerPattern.test(h));
 
   if (hasMultipleTrainers) {
-    // Skip first 5 columns (Id, Start time, Completion time, Email, Name)
-    const validHeaders = headers.slice(5);
-
-    validHeaders.forEach((header) => {
-      const match = header.match(multiTrainerPattern);
-      if (match) {
-        const trainer = match[1].trim();
-        allTrainers.add(trainer);
-        // Extract question by removing the trainer suffix
-        const question = header.replace(multiTrainerPattern, "").trim();
-        if (!trainerGroups[question]) trainerGroups[question] = [];
-        trainerGroups[question].push(trainer);
-      }
-    });
-
-    // Preserve order of questions as they appear
-    const orderedGroups = {};
-    validHeaders.forEach((header) => {
-      const base = header.replace(multiTrainerPattern, "").trim();
-      if (trainerGroups[base] && !orderedGroups[base]) {
-        orderedGroups[base] = trainerGroups[base];
-      }
-    });
-
-    console.log("Multiple Trainers Detected:", Array.from(allTrainers));
-    console.log("Question Groups:", orderedGroups);
-
-    return {
-      type: "multiple_trainers",
-      trainers: Array.from(allTrainers),
-      groups: orderedGroups,
-      questionCount: Object.keys(orderedGroups).length,
-    };
+    return analyzeMultipleTrainers(headers, multiTrainerPattern);
   }
 
-  // Single trainer detection
-  // Dynamically identify rating columns by excluding metadata and comment columns
+  return analyzeSingleTrainer(headers);
+}
+
+function analyzeMultipleTrainers(headers, pattern) {
+  const validHeaders = headers.slice(5, headers.length - 3);
+  const trainerGroups = {};
+  const allTrainers = new Set();
+
+  validHeaders.forEach((header) => {
+    const match = header.match(pattern);
+    if (match) {
+      const trainer = match[1].trim();
+      allTrainers.add(trainer);
+      const question = header.replace(pattern, "").trim();
+      if (!trainerGroups[question]) trainerGroups[question] = [];
+      trainerGroups[question].push(trainer);
+    }
+  });
+
+  const orderedGroups = {};
+  validHeaders.forEach((header) => {
+    const base = header.replace(pattern, "").trim();
+    if (trainerGroups[base] && !orderedGroups[base]) {
+      orderedGroups[base] = trainerGroups[base];
+    }
+  });
+
+  console.log("Multiple Trainers Detected:", Array.from(allTrainers));
+  console.log("Question Groups:", orderedGroups);
+
+  return {
+    type: "multiple_trainers",
+    trainers: Array.from(allTrainers),
+    groups: orderedGroups,
+    questionCount: Object.keys(orderedGroups).length,
+  };
+}
+
+function analyzeSingleTrainer(headers) {
   const excludedKeywords = [
     "id",
     "start time",
@@ -150,10 +151,8 @@ function analyzeFileStructure(headers) {
   ];
 
   const ratingHeaders = headers.filter((header, index) => {
-    const normalized = header.toLowerCase();
-    // Skip first 5 columns (metadata)
     if (index < 5) return false;
-    // Skip if contains excluded keywords
+    const normalized = header.toLowerCase();
     return !excludedKeywords.some((keyword) => normalized.includes(keyword));
   });
 
@@ -168,10 +167,12 @@ function analyzeFileStructure(headers) {
 
 function extractQuestionsFromHeaders(headers, analysis) {
   questions.length = 0;
+
   if (analysis.type === "multiple_trainers") {
     const validHeaders = headers.slice(5, headers.length - 3);
     const pattern = /\.+([^.\d]+)$/;
     const seenQuestions = new Set();
+
     validHeaders.forEach((header) => {
       const baseQuestion = header.replace(pattern, "").trim();
       if (baseQuestion && !seenQuestions.has(baseQuestion)) {
@@ -183,6 +184,7 @@ function extractQuestionsFromHeaders(headers, analysis) {
     const ratingHeaders = headers.slice(8, headers.length - 3);
     questions.push(...ratingHeaders.map((h) => h.trim()).filter((q) => q));
   }
+
   console.log("Extracted Questions from Excel:", questions);
   window.renderQuestionList?.();
 }
@@ -196,18 +198,18 @@ function displayFileAnalysis(analysis, columnCount, rowCount) {
   type1Section?.classList.add("hidden");
   type2Section?.classList.add("hidden");
 
+  const isMultiTrainer = analysis.type === "multiple_trainers";
+
   let infoHTML = `
     <h3>File Analysis Complete</h3>
     <p><strong>No of Trainees:</strong> ${rowCount}</p>
     <p><strong>No of Questions:</strong> ${questions.length}</p>
     <p><strong>File Type:</strong> ${
-      analysis.type === "multiple_trainers"
-        ? "Multiple Trainers"
-        : "Single Trainer"
+      isMultiTrainer ? "Multiple Trainers" : "Single Trainer"
     }</p>
   `;
 
-  if (analysis.type === "multiple_trainers") {
+  if (isMultiTrainer) {
     infoHTML += `<p><strong>Trainers:</strong> ${analysis.trainers.join(
       ", "
     )}</p>`;
@@ -231,18 +233,14 @@ function displayFileAnalysis(analysis, columnCount, rowCount) {
 // ===================================
 
 function getStudentsWithVeryPoorRating(trainerName, columns) {
-  const emailKey = findEmailColumn();
-  const nameKey = findNameColumn();
+  const emailKey = findColumn(["email", "mail"]);
+  const nameKey = findColumn(["name"]);
   const studentsWithVeryPoor = [];
 
   excelRows.forEach((row, index) => {
-    let hasVeryPoorRating = false;
-
-    columns.forEach((column) => {
+    const hasVeryPoorRating = columns.some((column) => {
       const rating = row[column];
-      if (rating && NORMALIZE(rating).includes("poor")) {
-        hasVeryPoorRating = true;
-      }
+      return rating && NORMALIZE(rating).includes("poor");
     });
 
     if (hasVeryPoorRating) {
@@ -259,24 +257,6 @@ function getStudentsWithVeryPoorRating(trainerName, columns) {
   });
 
   return studentsWithVeryPoor;
-}
-
-function findEmailColumn() {
-  const headers = Object.keys(excelRows[0] || {});
-  return headers.find(
-    (header) =>
-      header.toLowerCase().includes("email") ||
-      header.toLowerCase().includes("mail")
-  );
-}
-
-function findNameColumn() {
-  const headers = Object.keys(excelRows[0] || {});
-  return headers.find(
-    (header) =>
-      header.toLowerCase().includes("name") &&
-      !header.toLowerCase().includes("trainer")
-  );
 }
 
 // ===================================
@@ -331,6 +311,71 @@ export function copyEmailsToClipboard(trainerName) {
 }
 
 // ===================================
+// GEMINI AI SUMMARIZATION
+// ===================================
+
+async function summarizeWithGemini(label, comments) {
+  if (!comments.length) return [`No ${label} comments available.`];
+
+  // const API_KEY = window._env_.geminiApiKey;
+  // const ENDPOINT = window._env_.geminiEndpoint;
+  const API_KEY = " window._env_.geminiApiKey";
+  const ENDPOINT = "window._env_.geminiEndpoint";
+  const feedbackText = comments.join("\n");
+  const prompt = `Summarize the following trainee feedback about "${label}" into 3-4 clear bullet points. Return only bullet points:\n\n${feedbackText}`;
+
+  try {
+    const response = await fetch(`${ENDPOINT}?key=${API_KEY}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      console.error("Gemini error:", result);
+      return [`Error summarizing ${label}.`];
+    }
+
+    let summary = result?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    summary = summary
+      .replace(/\*/g, "")
+      .split("\n")
+      .filter((l) => l.trim() !== "");
+
+    return summary;
+  } catch (err) {
+    console.error("Gemini fetch failed:", err);
+    return [`Error fetching summary for ${label}.`];
+  }
+}
+
+async function getCommentSummaries(headers) {
+  const commentWellKey = findColumn(["what went"]);
+  const commentImproveKey = findColumn(["what needs", "what need"]);
+
+  const commentsWell = commentWellKey
+    ? excelRows
+        .map((r) => r[commentWellKey])
+        .filter((c) => c && c.toString().trim())
+    : [];
+
+  const commentsImprove = commentImproveKey
+    ? excelRows
+        .map((r) => r[commentImproveKey])
+        .filter((c) => c && c.toString().trim())
+    : [];
+
+  return Promise.all([
+    summarizeWithGemini("What went well", commentsWell),
+    summarizeWithGemini("What needs improvement", commentsImprove),
+  ]);
+}
+
+// ===================================
 // REPORT GENERATION
 // ===================================
 
@@ -340,10 +385,8 @@ export function generateReports() {
     return;
   }
 
-  // Get the training topic from the input field
   trainingTopic =
     document.getElementById("trainingTopic")?.value || "Tech Fundamentals";
-
   studentsWithVeryPoorRatings = {};
 
   if (fileType === "single_trainer") {
@@ -364,91 +407,22 @@ export function generateReports() {
 async function generateSingleTrainerReport(trainerName) {
   showLoading("Generating Report...");
 
-  const existingFilter = document.getElementById("trainerFilterSection");
-  if (existingFilter) existingFilter.remove();
-  const bulkActions = document.querySelector(".bulk-actions");
-  if (bulkActions) bulkActions.style.display = "none";
+  clearExistingReportUI();
 
   const headers = Object.keys(excelRows[0]);
   const ratingColumns = headers.slice(8, headers.length - 3);
 
-  const studentsWithVeryPoor = getStudentsWithVeryPoorRating(
+  studentsWithVeryPoorRatings[trainerName] = getStudentsWithVeryPoorRating(
     trainerName,
     ratingColumns
   );
-  studentsWithVeryPoorRatings[trainerName] = studentsWithVeryPoor;
 
-  const commentWellKey = headers.find((k) =>
-    k.toLowerCase().includes("what went")
-  );
-  const commentImproveKey = headers.find(
-    (k) =>
-      k.toLowerCase().includes("what needs") ||
-      k.toLowerCase().includes("what need")
-  );
+  const [summaryWell, summaryImprove] = await getCommentSummaries(headers);
 
-  const commentsWell = commentWellKey
-    ? excelRows
-        .map((r) => r[commentWellKey])
-        .filter((c) => c && c.toString().trim())
-    : [];
+  generateReport(trainerName, ratingColumns, summaryWell, summaryImprove);
 
-  const commentsImprove = commentImproveKey
-    ? excelRows
-        .map((r) => r[commentImproveKey])
-        .filter((c) => c && c.toString().trim())
-    : [];
-
-  const output = document.getElementById("output");
-  if (output) output.innerHTML = "";
-
-  const API_KEY = window._env_.geminiApiKey;
-  const ENDPOINT = window._env_.geminiEndpoint;
-
-  async function summarizeWithGemini(label, comments) {
-    if (!comments.length) return [`No ${label} comments available.`];
-
-    const feedbackText = comments.join("\n");
-    const prompt = `Summarize the following trainee feedback about "${label}" into 3-4 clear bullet points. Return only bullet points:\n\n${feedbackText}`;
-
-    try {
-      const response = await fetch(`${ENDPOINT}?key=${API_KEY}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: prompt }] }],
-        }),
-      });
-
-      const result = await response.json();
-      if (!response.ok) {
-        console.error("Gemini error:", result);
-        return [`Error summarizing ${label}.`];
-      }
-
-      let summary = result?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      summary = summary
-        .replace(/\*/g, "")
-        .split("\n")
-        .filter((l) => l.trim() !== "");
-      return summary;
-    } catch (err) {
-      console.error("Gemini fetch failed:", err);
-      return [`Error fetching summary for ${label}.`];
-    }
-  }
-
-  Promise.all([
-    summarizeWithGemini("What went well", commentsWell),
-    summarizeWithGemini("What needs improvement", commentsImprove),
-  ])
-    .then(([summaryWell, summaryImprove]) => {
-      generateReport(trainerName, ratingColumns, summaryWell, summaryImprove);
-    })
-    .finally(() => {
-      hideLoading();
-    });
-
+  hideLoading();
+  switchToReportPage();
   addSaveButtonToReportPage();
 }
 
@@ -456,8 +430,28 @@ async function generateMultipleTrainerReports() {
   showLoading("Generating Report...");
 
   const headers = Object.keys(excelRows[0]);
-  const validHeaders = headers.slice(5, headers.length - 3);
+  const trainerDataMap = buildTrainerDataMap(headers);
 
+  const [summaryWell, summaryImprove] = await getCommentSummaries(headers);
+
+  Object.entries(trainerDataMap).forEach(([trainer, items]) => {
+    const cols = items.map((i) => i.column);
+    studentsWithVeryPoorRatings[trainer] = getStudentsWithVeryPoorRating(
+      trainer,
+      cols
+    );
+    generateReport(trainer, cols, summaryWell, summaryImprove);
+  });
+
+  createTrainerFilterDropdown(Object.keys(trainerDataMap));
+
+  hideLoading();
+  switchToReportPage();
+  addSaveButtonToReportPage();
+}
+
+function buildTrainerDataMap(headers) {
+  const validHeaders = headers.slice(5, headers.length - 3);
   const pattern = /\.+([^.\d]+)$/;
   const trainerGroups = {};
   const allTrainers = new Set();
@@ -473,73 +467,6 @@ async function generateMultipleTrainerReports() {
     }
   });
 
-  const commentWellKey = headers.find((k) =>
-    k.toLowerCase().includes("what went")
-  );
-  const commentImproveKey = headers.find(
-    (k) =>
-      k.toLowerCase().includes("what needs") ||
-      k.toLowerCase().includes("what need")
-  );
-
-  const commentsWell = commentWellKey
-    ? excelRows
-        .map((r) => r[commentWellKey])
-        .filter((c) => c && c.toString().trim())
-    : [];
-
-  const commentsImprove = commentImproveKey
-    ? excelRows
-        .map((r) => r[commentImproveKey])
-        .filter((c) => c && c.toString().trim())
-    : [];
-
-  const output = document.getElementById("output");
-  if (output) output.innerHTML = "";
-
-  const API_KEY = window._env_.geminiApiKey;
-  const ENDPOINT = window._env_.geminiEndpoint;
-
-  async function summarizeWithGemini(label, comments) {
-    if (!comments.length) return [`No ${label} comments available.`];
-
-    const feedbackText = comments.join("\n");
-    const prompt = `Summarize the following trainee feedback about "${label}" into 3-4 clear bullet points. Return only bullet points:\n\n${feedbackText}`;
-
-    try {
-      const response = await fetch(`${ENDPOINT}?key=${API_KEY}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: prompt }] }],
-        }),
-      });
-
-      const result = await response.json();
-      if (!response.ok) {
-        console.error("Gemini error:", result);
-        return [`Error summarizing ${label}.`];
-      }
-
-      let summary = result?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      summary = summary
-        .replace(/\*/g, "")
-        .split("\n")
-        .filter((l) => l.trim() !== "");
-      return summary;
-    } catch (err) {
-      console.error("Gemini fetch failed:", err);
-      return [`Error fetching summary for ${label}.`];
-    }
-  }
-
-  const [summaryWell, summaryImprove] = await Promise.all([
-    summarizeWithGemini("What went well", commentsWell),
-    summarizeWithGemini("What needs improvement", commentsImprove),
-  ]).finally(() => {
-    hideLoading();
-  });
-
   const trainerDataMap = {};
   allTrainers.forEach((trainer) => {
     trainerDataMap[trainer] = [];
@@ -551,47 +478,35 @@ async function generateMultipleTrainerReports() {
     });
   });
 
-  Object.entries(trainerDataMap).forEach(([trainer, items]) => {
-    const cols = items.map((i) => i.column);
-    const studentsWithVeryPoor = getStudentsWithVeryPoorRating(trainer, cols);
-    studentsWithVeryPoorRatings[trainer] = studentsWithVeryPoor;
-    generateReport(trainer, cols, summaryWell, summaryImprove);
-  });
-
-  createTrainerFilterDropdown([...allTrainers]);
-
-  document.getElementById("dashboardPage")?.classList.add("hidden");
-  document.getElementById("reportPage")?.classList.remove("hidden");
-  addSaveButtonToReportPage();
+  return trainerDataMap;
 }
 
-function generateReport(trainerName, columns, commentsWell, commentsImprove) {
-  const ratings = {};
-  columns.forEach(
-    (c, i) =>
-      (ratings[i] = {
-        Excellent: 0,
-        "Very Good": 0,
-        Good: 0,
-        Average: 0,
-        "Very Poor": 0,
-      })
-  );
+function calculateRatings(columns) {
+  const ratings = columns.map(() => ({
+    Excellent: 0,
+    "Very Good": 0,
+    Good: 0,
+    Average: 0,
+    "Very Poor": 0,
+  }));
 
   let totalScore = 0,
     scoreCount = 0;
-  excelRows.forEach((r) => {
-    columns.forEach((c, i) => {
-      const val = r[c];
+
+  excelRows.forEach((row) => {
+    columns.forEach((col, i) => {
+      const val = row[col];
       if (!val) return;
 
       const norm = NORMALIZE(val);
       let label = null;
+
       if (norm.includes("excellent")) label = "Excellent";
       else if (norm.includes("very good")) label = "Very Good";
       else if (norm === "good") label = "Good";
       else if (norm === "average") label = "Average";
       else if (norm.includes("poor")) label = "Very Poor";
+
       if (label) ratings[i][label]++;
 
       if (ratingMap[norm] !== undefined) {
@@ -602,15 +517,60 @@ function generateReport(trainerName, columns, commentsWell, commentsImprove) {
   });
 
   const overall = scoreCount ? (totalScore / scoreCount).toFixed(2) : "N/A";
-  const studentsWithVeryPoor = studentsWithVeryPoorRatings[trainerName] || [];
+  return { ratings, overall };
+}
 
-  // --- create safe ids and build the report HTML ---
+function getOverallRatingClass(overall) {
+  const overallNumeric = overall === "N/A" ? null : parseFloat(overall);
+  if (overallNumeric === null) return "";
+  if (overallNumeric > 4) return "rating-success";
+  if (overallNumeric >= 3 && overallNumeric <= 3.9) return "rating-warning";
+  return "rating-danger";
+}
+
+function generateReport(trainerName, columns, commentsWell, commentsImprove) {
+  const { ratings, overall } = calculateRatings(columns);
+  const studentsWithVeryPoor = studentsWithVeryPoorRatings[trainerName] || [];
+  const overallClass = getOverallRatingClass(overall);
   const safeTrainer = safeId(trainerName);
+
   const output = document.getElementById("output");
   const div = document.createElement("div");
   div.className = "report";
 
-  div.innerHTML = `
+  div.innerHTML = buildReportHTML(
+    trainerName,
+    overall,
+    overallClass,
+    studentsWithVeryPoor,
+    columns,
+    ratings,
+    commentsWell,
+    commentsImprove,
+    safeTrainer
+  );
+
+  if (output) output.appendChild(div);
+
+  renderCharts(safeTrainer, ratings, columns);
+
+  if (fileType === "single_trainer") {
+    switchToReportPage();
+  }
+}
+
+function buildReportHTML(
+  trainerName,
+  overall,
+  overallClass,
+  studentsWithVeryPoor,
+  columns,
+  ratings,
+  commentsWell,
+  commentsImprove,
+  safeTrainer
+) {
+  return `
   <div class="report-content">
     <h2>ILP - ${trainingTopic} Feedback — ${trainerName}</h2>
 
@@ -618,7 +578,7 @@ function generateReport(trainerName, columns, commentsWell, commentsImprove) {
       <div><strong>Batch Name:</strong> ILP 2024-25 Batch</div>
       <div><strong>Total Trainee Count:</strong> ${excelRows.length}</div>
       <div><strong>Trainer Name:</strong> ${trainerName}</div>
-      <div><strong>Overall Program Rating (out of 5):</strong> ${overall}</div>
+      <div><strong>Overall Program Rating (out of 5):</strong> <span class="${overallClass}">${overall}</span></div>
       ${
         studentsWithVeryPoor.length > 0
           ? `<div><strong>Students with "Very Poor" ratings:</strong> ${studentsWithVeryPoor.length}</div>`
@@ -656,72 +616,74 @@ function generateReport(trainerName, columns, commentsWell, commentsImprove) {
         <div class="chart-container pie-chart-container" style="width:360px; height:360px;">
           <canvas id="pie_${safeTrainer}"></canvas>
         </div>
-
         <div class="chart-container bar-chart-container" style="width:520px; height:360px;">
           <canvas id="bar_${safeTrainer}"></canvas>
         </div>
       </div>
     </div>
 
-    ${
-      commentsWell.length > 0
-        ? `
-    <div class="section">
-      <h3>What went well / things you most liked</h3>
-      <ul>${commentsWell.map((c) => `<li>${c}</li>`).join("")}</ul>
-    </div>
-    `
-        : ""
-    }
-    
-    ${
-      commentsImprove.length > 0
-        ? `
-    <div class="section">
-      <h3>What needs improvement</h3>
-      <ul>${commentsImprove.map((c) => `<li>${c}</li>`).join("")}</ul>
-    </div>
-    `
-        : ""
-    }
-    
-    ${
-      studentsWithVeryPoor.length > 0
-        ? `
-    <div class="section">
-      <h3>Students with "Very Poor" Ratings</h3>
-      <p>The following students gave "Very Poor" ratings:</p>
-      <ul>
-        ${studentsWithVeryPoor
-          .map((student) => `<li>${student.name} (${student.email})</li>`)
-          .join("")}
-      </ul>
-    </div>
-    `
-        : ""
-    }
+    ${buildCommentsSection(
+      "What went well / things you most liked",
+      commentsWell
+    )}
+    ${buildCommentsSection("What needs improvement", commentsImprove)}
+    ${buildStudentsSection(studentsWithVeryPoor)}
   </div>
   
   <div class="report-actions">
     <button onclick="downloadPDF(this)"><i class="fa-solid fa-arrow-down"></i> Download PDF</button>
-    ${
-      studentsWithVeryPoor.length > 0
-        ? `
-      <button onclick="openOutlookWebWithEmails('${trainerName}')" class="email-btn">
-        <i class="fa-solid fa-envelope"></i> Open Outlook with Emails
-      </button>
-      <button onclick="copyEmailsToClipboard('${trainerName}')" class="copy-btn">
-        <i class="fa-solid fa-copy"></i> Copy Emails
-      </button>
-    `
-        : ""
-    }
+    ${buildEmailButtons(trainerName, studentsWithVeryPoor)}
   </div>
 `;
+}
 
-  if (output) output.appendChild(div);
+function buildCommentsSection(title, comments) {
+  if (comments.length === 0) return "";
+  return `
+    <div class="section">
+      <h3>${title}</h3>
+      <ul>${comments.map((c) => `<li>${c}</li>`).join("")}</ul>
+    </div>
+  `;
+}
 
-  // Build Pie Data
+function buildStudentsSection(students) {
+  if (students.length === 0) return "";
+  return `
+    <div class="section">
+      <h3>Students with "Very Poor" Ratings</h3>
+      <p>The following students gave "Very Poor" ratings:</p>
+      <ul>
+        ${students
+          .map((student) => `<li>${student.name} (${student.email})</li>`)
+          .join("")}
+      </ul>
+    </div>
+  `;
+}
+
+function buildEmailButtons(trainerName, students) {
+  if (students.length === 0) return "";
+  return `
+    <button onclick="openOutlookWebWithEmails('${trainerName}')" class="email-btn">
+      <i class="fa-solid fa-envelope"></i> Open Outlook with Emails
+    </button>
+    <button onclick="copyEmailsToClipboard('${trainerName}')" class="copy-btn">
+      <i class="fa-solid fa-copy"></i> Copy Emails
+    </button>
+  `;
+}
+
+// ===================================
+// CHART RENDERING
+// ===================================
+
+function renderCharts(safeTrainer, ratings, columns) {
+  renderPieChart(safeTrainer, ratings);
+  renderBarChart(safeTrainer, columns);
+}
+
+function renderPieChart(safeTrainer, ratings) {
   const pieData = {
     Excellent: 0,
     "Very Good": 0,
@@ -729,11 +691,22 @@ function generateReport(trainerName, columns, commentsWell, commentsImprove) {
     Average: 0,
     "Very Poor": 0,
   };
+
   Object.values(ratings).forEach((r) => {
     Object.keys(r).forEach((k) => (pieData[k] += r[k]));
   });
 
-  // PIE CHART
+  // Professional blue gradient palette from dark to light
+  const enhancedColors = {
+    pie: [
+      "#1E3A8A", // Excellent - Deep Navy
+      "#3B82F6", // Very Good - Bright Blue
+      "#10B981", // Good - Emerald Green
+      "#F59E0B", // Average - Amber
+      "#EF4444", // Very Poor - Red
+    ],
+  };
+
   new Chart(document.getElementById("pie_" + safeTrainer), {
     type: "pie",
     plugins: [ChartDataLabels],
@@ -742,13 +715,11 @@ function generateReport(trainerName, columns, commentsWell, commentsImprove) {
       datasets: [
         {
           data: Object.values(pieData),
-          backgroundColor: [
-            "#001f3f",
-            "#003d7a",
-            "#0051b3",
-            "#0066cc",
-            "#4C9EFF",
-          ],
+          backgroundColor: enhancedColors.pie,
+          borderWidth: 3,
+          borderColor: "#ffffff",
+          hoverOffset: 15,
+          hoverBorderWidth: 4,
         },
       ],
     },
@@ -759,30 +730,66 @@ function generateReport(trainerName, columns, commentsWell, commentsImprove) {
         title: {
           display: true,
           text: "Overall Rating Distribution",
-          font: { size: 14, weight: "bold" },
-          padding: { bottom: 10 },
+          font: {
+            size: 18,
+            weight: "bold",
+            family: "'Segoe UI', Arial, sans-serif",
+          },
+          padding: { bottom: 20, top: 10 },
+          color: "#1f2937",
         },
         legend: {
           position: "bottom",
-          labels: { padding: 12, font: { size: 13 } },
+          labels: {
+            padding: 16,
+            font: { size: 14, family: "'Segoe UI', Arial, sans-serif" },
+            color: "#374151",
+            usePointStyle: true,
+            pointStyle: "circle",
+            boxWidth: 12,
+            boxHeight: 12,
+          },
+        },
+        tooltip: {
+          backgroundColor: "rgba(0, 0, 0, 0.8)",
+          padding: 12,
+          titleFont: { size: 14, weight: "bold" },
+          bodyFont: { size: 13 },
+          cornerRadius: 8,
+          displayColors: true,
+          callbacks: {
+            label: function (context) {
+              const total = context.dataset.data.reduce((a, b) => a + b, 0);
+              const percentage = ((context.parsed / total) * 100).toFixed(1);
+              return ` ${context.label}: ${context.parsed} (${percentage}%)`;
+            },
+          },
         },
         datalabels: {
-          color: "#fff",
-          font: { weight: "bold", size: 12 },
+          color: "#ffffff",
+          font: {
+            weight: "bold",
+            size: 13,
+            family: "'Segoe UI', Arial, sans-serif",
+          },
+          textStrokeColor: "rgba(0, 0, 0, 0.3)",
+          textStrokeWidth: 2,
           formatter: (value, ctx) => {
             if (value === 0) return "";
             const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
             const percentage = ((value / total) * 100).toFixed(1);
-            return `${value}\n(${percentage}%)`;
+            return `${value}\n${percentage}%`;
           },
         },
       },
     },
   });
+}
 
-  // BAR CHART - AVERAGE RATING PER QUESTION
+function renderBarChart(safeTrainer, columns) {
   const barLabels = columns.map((_, i) => "Q" + (i + 1));
-  const barData = columns.map((c, i) => {
+
+  const barData = columns.map((c) => {
     let total = 0,
       count = 0;
     excelRows.forEach((r) => {
@@ -796,14 +803,19 @@ function generateReport(trainerName, columns, commentsWell, commentsImprove) {
   });
 
   const barCanvas = document.getElementById("bar_" + safeTrainer);
-  if (barCanvas && barCanvas.parentElement) {
-    barCanvas.parentElement.style.width =
-      barCanvas.parentElement.style.width || "720px";
-    barCanvas.parentElement.style.height =
-      barCanvas.parentElement.style.height || "380px";
+  if (barCanvas?.parentElement) {
+    barCanvas.parentElement.style.width = "880px";
+    barCanvas.parentElement.style.height = "480px";
     barCanvas.style.width = "100%";
     barCanvas.style.height = "100%";
   }
+
+  const ctx = barCanvas.getContext("2d");
+
+  // Smooth vertical gradient
+  const gradient = ctx.createLinearGradient(0, 0, 0, 450);
+  gradient.addColorStop(0, "#1d4ed8"); // deep blue
+  gradient.addColorStop(1, "#3b82f6"); // light blue
 
   new Chart(barCanvas, {
     type: "bar",
@@ -814,67 +826,130 @@ function generateReport(trainerName, columns, commentsWell, commentsImprove) {
         {
           label: "Average Rating",
           data: barData,
-          backgroundColor: "#4C9EFF",
-          barThickness: 34,
-          maxBarThickness: 60,
+          backgroundColor: gradient,
+
+          
+          barThickness: 70,
+          maxBarThickness: 80,
+          barPercentage: 0.9,
+          
+
+          borderRadius: {
+            topLeft: 10,
+            topRight: 10,
+            bottomLeft: 0,
+            bottomRight: 0,
+          },
+          borderSkipped: "bottom",
         },
       ],
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      layout: { padding: { top: 10, right: 10, left: 10, bottom: 10 } },
+
+      layout: { padding: { top: 25, right: 30, left: 15, bottom: 20 } },
+
       scales: {
         y: {
           beginAtZero: true,
-          suggestedMin: 0,
           suggestedMax: 5,
-          ticks: { stepSize: 1 },
+          ticks: {
+            stepSize: 1,
+            font: { size: 13, family: "'Segoe UI', Arial" },
+            color: "#4b5563",
+            padding: 8,
+          },
+          grid: {
+            color: "rgba(0,0,0,0.05)",
+            drawBorder: false,
+            lineWidth: 1.2,
+          },
           title: {
             display: true,
-            text: "Rating Score (0-5)",
-            font: { size: 12, weight: "bold" },
+            text: "Rating (0–5)",
+            font: { size: 14, weight: "bold", family: "'Segoe UI', Arial" },
+            color: "#374151",
+            padding: { bottom: 10 },
           },
         },
+
         x: {
+          grid: { display: false },
+          ticks: {
+            font: { size: 13, family: "'Segoe UI', Arial" },
+            color: "#4b5563",
+            padding: 8,
+          },
           title: {
             display: true,
             text: "Questions",
-            font: { size: 12, weight: "bold" },
+            font: { size: 14, weight: "bold", family: "'Segoe UI', Arial" },
+            color: "#374151",
+            padding: { top: 10 },
           },
-          ticks: { maxRotation: 0, autoSkip: false },
         },
       },
+
       plugins: {
         title: {
           display: true,
           text: "Average Rating Per Question",
-          font: { size: 14, weight: "bold" },
-          padding: { bottom: 35, left: 20 },
+          font: { size: 20, weight: "bold", family: "'Segoe UI', Arial" },
+          color: "#1f2937",
+          padding: { bottom: 30 },
         },
+
         legend: { display: false },
+
+        tooltip: {
+          backgroundColor: "rgba(0,0,0,0.85)",
+          bodyFont: { size: 14 },
+          titleFont: { size: 15, weight: "bold" },
+          cornerRadius: 8,
+          displayColors: false,
+          padding: 12,
+          callbacks: {
+            title: (ctx) => `Question ${ctx[0].dataIndex + 1}`,
+            label: (ctx) => `Average: ${parseFloat(ctx.parsed.y).toFixed(2)}`,
+          },
+        },
+
         datalabels: {
           anchor: "end",
           align: "end",
-          font: { size: 12, weight: "bold" },
-          color: "#0b63d6",
-          offset: 6,
-          formatter: (value) => (value ? parseFloat(value).toFixed(2) : "0"),
+          offset: 10,
+          font: { size: 13, weight: "bold", family: "'Segoe UI', Arial" },
+          color: "#1f2937",
+          backgroundColor: "rgba(255,255,255,0.9)",
+          borderRadius: 5,
+          padding: { left: 6, right: 6, top: 4, bottom: 4 },
+          formatter: (v) => parseFloat(v).toFixed(2),
         },
       },
     },
   });
-
-  // Switch to report page for single trainer
-  if (fileType === "single_trainer") {
-    document.getElementById("dashboardPage")?.classList.add("hidden");
-    document.getElementById("reportPage")?.classList.remove("hidden");
-  }
 }
 
 // ===================================
 // UI HELPERS
 // ===================================
+
+function clearExistingReportUI() {
+  const existingFilter = document.getElementById("trainerFilterSection");
+  if (existingFilter) existingFilter.remove();
+
+  const bulkActions = document.querySelector(".bulk-actions");
+  if (bulkActions) bulkActions.style.display = "none";
+
+  const output = document.getElementById("output");
+  if (output) output.innerHTML = "";
+}
+
+function switchToReportPage() {
+  document.getElementById("dashboardPage")?.classList.add("hidden");
+  document.getElementById("reportPage")?.classList.remove("hidden");
+}
 
 function createTrainerFilterDropdown(trainerNames) {
   const reportPage = document.getElementById("reportPage");
@@ -912,14 +987,11 @@ export function filterReportsByTrainer() {
     const reportTitle = report.querySelector("h2")?.textContent;
     if (!reportTitle) return;
 
-    // Extract trainer name from title format "ILP - [Topic] Feedback — [TrainerName]"
     const trainerName = reportTitle.split(" — ")[1]?.trim() || "";
-
-    if (selectedTrainer === "all" || trainerName === selectedTrainer) {
-      report.style.display = "block";
-    } else {
-      report.style.display = "none";
-    }
+    report.style.display =
+      selectedTrainer === "all" || trainerName === selectedTrainer
+        ? "block"
+        : "none";
   });
 
   updateBulkActionsVisibility();
@@ -928,7 +1000,6 @@ export function filterReportsByTrainer() {
 export function updateBulkActionsVisibility() {
   const selectedTrainer = document.getElementById("trainerFilter")?.value;
   const bulkActions = document.querySelector(".bulk-actions");
-
   if (bulkActions) {
     bulkActions.style.display = selectedTrainer === "all" ? "block" : "none";
   }
@@ -955,36 +1026,39 @@ export async function downloadPDF(button) {
   );
 
   if (poorSection) poorSection.style.display = "none";
-
   const canvas = await html2canvas(reportDiv, { scale: 2 });
   const imgData = canvas.toDataURL("image/png");
-
   if (poorSection) poorSection.style.display = "block";
 
   const pdf = new jsPDF("p", "mm", "a4");
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
-
-  let imgWidth = pageWidth - 20;
-  let imgHeight = (canvas.height * imgWidth) / canvas.width;
-  if (imgHeight > pageHeight - 20) {
-    imgHeight = pageHeight - 20;
-    imgWidth = (canvas.width * imgHeight) / canvas.height;
-  }
+  const { imgWidth, imgHeight } = calculatePDFDimensions(pdf, canvas);
 
   pdf.addImage(imgData, "PNG", 10, 10, imgWidth, imgHeight);
 
   const trainerName =
     reportDiv.querySelector("h2")?.textContent.split(" — ")[1]?.trim() ||
     "TrainerReport";
-
   pdf.save(`${trainerName}_Feedback_Report.pdf`);
+}
+
+function calculatePDFDimensions(pdf, canvas) {
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+
+  let imgWidth = pageWidth - 20;
+  let imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+  if (imgHeight > pageHeight - 20) {
+    imgHeight = pageHeight - 20;
+    imgWidth = (canvas.width * imgHeight) / canvas.height;
+  }
+
+  return { imgWidth, imgHeight };
 }
 
 export async function downloadAllReports() {
   const { jsPDF } = window.jspdf;
   const pdf = new jsPDF("p", "mm", "a4");
-
   const reports = document.querySelectorAll(".report .report-content");
 
   if (!reports.length) {
@@ -994,28 +1068,16 @@ export async function downloadAllReports() {
 
   for (let i = 0; i < reports.length; i++) {
     const reportDiv = reports[i];
-
     const poorSection = Array.from(reportDiv.querySelectorAll(".section")).find(
       (sec) => sec.querySelector("h3")?.textContent.includes("Very Poor")
     );
 
     if (poorSection) poorSection.style.display = "none";
-
     const canvas = await html2canvas(reportDiv, { scale: 2 });
     const imgData = canvas.toDataURL("image/png");
-
     if (poorSection) poorSection.style.display = "block";
 
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-
-    let imgWidth = pageWidth - 20;
-    let imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-    if (imgHeight > pageHeight - 20) {
-      imgHeight = pageHeight - 20;
-      imgWidth = (canvas.width * imgHeight) / canvas.height;
-    }
+    const { imgWidth, imgHeight } = calculatePDFDimensions(pdf, canvas);
 
     if (i > 0) pdf.addPage();
     pdf.addImage(imgData, "PNG", 10, 10, imgWidth, imgHeight);
@@ -1036,82 +1098,96 @@ export function prepareReportData() {
     const reportContent = reportDiv.querySelector(".report-content");
     if (!reportContent) return;
 
-    const trainerName = reportContent
-      .querySelector("h2")
-      ?.textContent.split(" — ")[1]
-      ?.trim();
-
-    const metaDiv = reportContent.querySelector(".meta");
-    const metaDivs = metaDiv?.querySelectorAll("div") || [];
-
-    let batchName = "";
-    let traineeCount = 0;
-    let overallRating = "";
-
-    metaDivs.forEach((div) => {
-      const text = div.textContent;
-      if (text.includes("Batch Name:")) {
-        batchName = text.replace("Batch Name:", "").trim();
-      } else if (text.includes("Total Trainee Count:")) {
-        traineeCount = parseInt(
-          text.replace("Total Trainee Count:", "").trim()
-        );
-      } else if (text.includes("Overall Program Rating")) {
-        overallRating = text.split(":")[1].trim();
-      }
-    });
-
-    const table = reportContent.querySelector("table");
-    const tableData = [];
-    const rows = table?.querySelectorAll("tr") || [];
-
-    rows.forEach((row, index) => {
-      if (index === 0) return;
-      const cells = row.querySelectorAll("td");
-      if (cells.length > 0) {
-        tableData.push({
-          category: cells[0].textContent.trim(),
-          excellent: parseInt(cells[1].textContent),
-          veryGood: parseInt(cells[2].textContent),
-          good: parseInt(cells[3].textContent),
-          average: parseInt(cells[4].textContent),
-          veryPoor: parseInt(cells[5].textContent),
-          total: parseInt(cells[6].textContent),
-        });
-      }
-    });
-
-    const sections = reportContent.querySelectorAll(".section");
-    let commentsWell = [];
-    let commentsImprove = [];
-    let studentsWithPoorRatings = [];
-
-    sections.forEach((section) => {
-      const heading = section.querySelector("h3")?.textContent;
-      const items = section.querySelectorAll("li");
-
-      if (heading?.includes("What went well")) {
-        commentsWell = Array.from(items).map((li) => li.textContent);
-      } else if (heading?.includes("What needs improvement")) {
-        commentsImprove = Array.from(items).map((li) => li.textContent);
-      } else if (heading?.includes("Very Poor")) {
-        studentsWithPoorRatings = Array.from(items).map((li) => li.textContent);
-      }
-    });
-
-    reports.push({
-      trainerName,
-      batchName,
-      traineeCount,
-      overallRating,
-      tableData,
-      commentsWell,
-      commentsImprove,
-      studentsWithPoorRatings,
-    });
+    const report = extractReportData(reportContent);
+    if (report) reports.push(report);
   });
 
   return reports;
+}
+
+function extractReportData(reportContent) {
+  const trainerName = reportContent
+    .querySelector("h2")
+    ?.textContent.split(" — ")[1]
+    ?.trim();
+  const metaData = extractMetaData(reportContent);
+  const tableData = extractTableData(reportContent);
+  const sections = extractSections(reportContent);
+
+  return {
+    trainerName,
+    ...metaData,
+    tableData,
+    ...sections,
+  };
+}
+
+function extractMetaData(reportContent) {
+  const metaDiv = reportContent.querySelector(".meta");
+  const metaDivs = metaDiv?.querySelectorAll("div") || [];
+
+  let batchName = "";
+  let traineeCount = 0;
+  let overallRating = "";
+
+  metaDivs.forEach((div) => {
+    const text = div.textContent;
+    if (text.includes("Batch Name:")) {
+      batchName = text.replace("Batch Name:", "").trim();
+    } else if (text.includes("Total Trainee Count:")) {
+      traineeCount = parseInt(text.replace("Total Trainee Count:", "").trim());
+    } else if (text.includes("Overall Program Rating")) {
+      overallRating = text.split(":")[1].trim();
+    }
+  });
+
+  return { batchName, traineeCount, overallRating };
+}
+
+function extractTableData(reportContent) {
+  const table = reportContent.querySelector("table");
+  const tableData = [];
+  const rows = table?.querySelectorAll("tr") || [];
+
+  rows.forEach((row, index) => {
+    if (index === 0) return; // Skip header
+    const cells = row.querySelectorAll("td");
+    if (cells.length > 0) {
+      tableData.push({
+        category: cells[0].textContent.trim(),
+        excellent: parseInt(cells[1].textContent),
+        veryGood: parseInt(cells[2].textContent),
+        good: parseInt(cells[3].textContent),
+        average: parseInt(cells[4].textContent),
+        veryPoor: parseInt(cells[5].textContent),
+        total: parseInt(cells[6].textContent),
+      });
+    }
+  });
+
+  return tableData;
+}
+
+function extractSections(reportContent) {
+  const sections = reportContent.querySelectorAll(".section");
+  let commentsWell = [];
+  let commentsImprove = [];
+  let studentsWithPoorRatings = [];
+
+  sections.forEach((section) => {
+    const heading = section.querySelector("h3")?.textContent;
+    const items = section.querySelectorAll("li");
+
+    if (heading?.includes("What went well")) {
+      commentsWell = Array.from(items).map((li) => li.textContent);
+    } else if (heading?.includes("What needs improvement")) {
+      commentsImprove = Array.from(items).map((li) => li.textContent);
+    } else if (heading?.includes("Very Poor")) {
+      studentsWithPoorRatings = Array.from(items).map((li) => li.textContent);
+    }
+  });
+
+  return { commentsWell, commentsImprove, studentsWithPoorRatings };
 }
 
 function addSaveButtonToReportPage() {
@@ -1119,23 +1195,22 @@ function addSaveButtonToReportPage() {
   if (!reportPage) return;
 
   const existingSaveBtn = document.getElementById("saveReportBtn");
+  if (existingSaveBtn) return;
 
-  if (!existingSaveBtn) {
-    const backButton = reportPage.querySelector('button[onclick="goBack()"]');
-    if (backButton) {
-      const saveButton = document.createElement("button");
-      saveButton.id = "saveReportBtn";
-      saveButton.onclick = window.openSaveReportModal;
-      saveButton.innerHTML =
-        '<i class="fa-solid fa-floppy-disk"></i> Save Report';
-      saveButton.style.marginLeft = "10px";
-      backButton.after(saveButton);
-    }
+  const backButton = reportPage.querySelector('button[onclick="goBack()"]');
+  if (backButton) {
+    const saveButton = document.createElement("button");
+    saveButton.id = "saveReportBtn";
+    saveButton.onclick = window.openSaveReportModal;
+    saveButton.innerHTML =
+      '<i class="fa-solid fa-floppy-disk"></i> Save Report';
+    saveButton.style.marginLeft = "10px";
+    backButton.after(saveButton);
   }
 }
 
 // ===================================
-// MAKE FUNCTIONS GLOBALLY ACCESSIBLE
+// GLOBAL EXPORTS
 // ===================================
 
 window.generateReports = generateReports;
