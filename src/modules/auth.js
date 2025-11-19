@@ -2,19 +2,16 @@
 // AUTH.JS — Firebase Authentication With Email Verification
 // ==========================================
 
-import { 
-  initializeApp 
-} from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
 
-import { 
+import {
   getAuth,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendEmailVerification,
   signOut,
-  onAuthStateChanged
+  onAuthStateChanged,
 } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
-
 
 // ---------------- FIREBASE CONFIG ---------------- //
 const firebaseConfig = {
@@ -32,14 +29,12 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
-
 // ---------------- AUTO REDIRECT (ONLY IF VERIFIED) ---------------- //
 onAuthStateChanged(auth, (user) => {
   if (user && user.emailVerified) {
-    window.location.href = "desg.html";
+    window.location.href = "src/pages/desg.html";
   }
 });
-
 
 // =======================================================
 // LOGIN FUNCTION
@@ -101,7 +96,7 @@ window.login = function () {
             });
         };
 
-        signOut(auth); 
+        signOut(auth);
         return;
       }
 
@@ -111,7 +106,7 @@ window.login = function () {
       btn.textContent = "Redirecting...";
 
       setTimeout(() => {
-        window.location.href = "desg.html";
+        window.location.href = "src/pages/desg.html";
       }, 1000);
     })
     .catch((error) => {
@@ -122,7 +117,6 @@ window.login = function () {
       errorMsg.style.display = "block";
     });
 };
-
 
 // =======================================================
 // SIGNUP FUNCTION WITH EMAIL VERIFICATION
@@ -162,7 +156,8 @@ window.signup = function () {
           successMsg.style.display = "block";
         })
         .catch((err) => {
-          errorMsg.textContent = "Failed to send verification email: " + err.message;
+          errorMsg.textContent =
+            "Failed to send verification email: " + err.message;
           errorMsg.style.display = "block";
         });
     })

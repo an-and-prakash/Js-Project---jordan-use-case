@@ -34,7 +34,7 @@ export let trainers = [];
 
 onAuthStateChanged(auth, (user) => {
   if (!user) {
-    window.location.href = "../pages/index.html";
+    window.location.href = "../../index.html";
   }
 });
 
@@ -42,7 +42,7 @@ document.getElementById("logoutBtn")?.addEventListener("click", () => {
   signOut(auth)
     .then(() => {
       console.log("User signed out");
-      window.location.href = "../pages/index.html";
+      window.location.href = "../../index.html";
     })
     .catch((error) => {
       console.error("Error signing out:", error);

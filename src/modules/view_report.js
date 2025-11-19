@@ -24,7 +24,7 @@ const ratingLabels = ["Excellent", "Very Good", "Good", "Average", "Very Poor"];
 // Auth check
 onAuthStateChanged(auth, (user) => {
   if (!user) {
-    window.location.href = "index.html";
+    window.location.href = "../../index.html";
   } else {
     loadReport();
   }
@@ -34,7 +34,7 @@ onAuthStateChanged(auth, (user) => {
 document.getElementById("logoutBtn").addEventListener("click", () => {
   signOut(auth)
     .then(() => {
-      window.location.href = "index.html";
+      window.location.href = "../../index.html";
     })
     .catch((error) => {
       console.error("Error signing out:", error);
