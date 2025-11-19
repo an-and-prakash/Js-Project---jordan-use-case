@@ -696,7 +696,6 @@ function renderPieChart(safeTrainer, ratings) {
     Object.keys(r).forEach((k) => (pieData[k] += r[k]));
   });
 
-  // Professional blue gradient palette from dark to light
   const enhancedColors = {
     pie: [
       "#1E3A8A", // Excellent - Deep Navy
@@ -731,9 +730,9 @@ function renderPieChart(safeTrainer, ratings) {
           display: true,
           text: "Overall Rating Distribution",
           font: {
-            size: 18,
+            size: 14,
             weight: "bold",
-            family: "'Segoe UI', Arial, sans-serif",
+            family: "Segoe UI",
           },
           padding: { bottom: 20, top: 10 },
           color: "#1f2937",

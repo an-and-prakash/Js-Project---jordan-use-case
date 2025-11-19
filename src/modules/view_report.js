@@ -12,7 +12,6 @@ import {
   get,
 } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
 
-
 const firebaseConfig = window._env_;
 
 const app = initializeApp(firebaseConfig);
@@ -25,7 +24,7 @@ const ratingLabels = ["Excellent", "Very Good", "Good", "Average", "Very Poor"];
 // Auth check
 onAuthStateChanged(auth, (user) => {
   if (!user) {
-    window.location.href = "login.html";
+    window.location.href = "index.html";
   } else {
     loadReport();
   }
@@ -35,7 +34,7 @@ onAuthStateChanged(auth, (user) => {
 document.getElementById("logoutBtn").addEventListener("click", () => {
   signOut(auth)
     .then(() => {
-      window.location.href = "login.html";
+      window.location.href = "index.html";
     })
     .catch((error) => {
       console.error("Error signing out:", error);

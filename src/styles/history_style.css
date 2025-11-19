@@ -421,3 +421,26 @@ html, body {
     max-width: 100%;
     overflow-x: hidden;
 }
+
+#loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+#historyTableContainer {
+  display: none;   /* fully hidden until JS loads data */
+}
+#loading {
+    min-height: 200px;  /* prevents layout jump */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.loading-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 40px;
+    width: 100%;
+}
+

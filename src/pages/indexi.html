@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <title>Trainer Feedback Report Generator</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f4f6f8;
+    }
+
+    h1 {
+      margin-bottom: 8px;
+    }
+
+    input[type="file"],
+    button {
+      margin: 6px 0;
+      padding: 6px;
+    }
+
+    .report {
+      background: #fff;
+      border-radius: 8px;
+      padding: 14px;
+      margin: 16px 0;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    th,
+    td {
+      border: 1px solid #e0e0e0;
+      padding: 8px;
+      text-align: center;
+      font-size: 14px;
+    }
+
+    th {
+      background: #fafafa;
+    }
+
+    .section {
+      margin-top: 12px;
+    }
+
+    ul {
+      margin: 6px 0 12px 18px;
+    }
+
+    .meta {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-top: 6px;
+    }
+
+    .meta div {
+      font-size: 14px;
+    }
+
+    .question-list {
+      margin: 10px 0;
+      padding-left: 20px;
+    }
+
+    /* Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-content {
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      width: 400px;
+      max-height: 80%;
+      overflow-y: auto;
+    }
+
+    .modal-content h2 {
+      margin-top: 0;
+    }
+
+    .modal-content input {
+      width: 90%;
+      margin: 6px 0;
+      padding: 6px;
+    }
+
+    .close {
+      float: right;
+      cursor: pointer;
+      font-size: 20px;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+
+</head>
+
+<body>
+  <!-- Dashboard Page -->
+  <div id="dashboardPage">
+    <h1>Trainer Feedback Report Generator</h1>
+    <p>Upload Excel → Generate trainer reports based on customizable questions.</p>
+
+    <input type="file" id="fileInput" accept=".xlsx, .xls" /><br />
+
+    <div>
+      <h3>Current Questions</h3>
+      <ol id="questionList"></ol>
+      <button onclick="openModal()">Edit Questions</button>
+      <button onclick="generateReports()">Generate Reports</button>
+    </div>
+  </div>
+
+  <!-- Reports Page -->
+  <div id="reportPage" class="hidden">
+    <button onclick="goBack()">⬅ Go Back</button>
+    <div id="output"></div>
+  </div>
+
+  <!-- Modal for editing questions -->
+  <div id="questionModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeModal()">&times;</span>
+      <h2>Edit Questions</h2>
+      <div id="questionInputs"></div>
+      <button onclick="addQuestion()">+ Add Question</button><br><br>
+      <button onclick="saveQuestions()">Save</button>
+    </div>
+  </div>
+
+  <script type="module">
+
+
+    let excelRows = [];
+    let questions = [
+      "Communication skills",
+      "Subject knowledge",
+      "Clarified doubts well",
+      "Overall effectiveness"
+    ]; // default 4
+
+    const NORMALIZE = s => ('' + (s || '')).toString().trim().toLowerCase();
+
+    const ratingMap = {
+      "excellent": 5,
+      "very good": 4,
+      "verygood": 4,
+      "good": 3,
+      "average": 2,
+      "poor": 1,
+      "very poor": 1,
+      "verypoor": 1
+    };
+
+    const ratingLabels = ["Excellent", "Very Good", "Good", "Average", "Very Poor"];
+
+    document.getElementById("fileInput").addEventListener("change", handleFile, false);
+
+    function handleFile(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function (event) {
+        const data = new Uint8Array(event.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        excelRows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+        alert("Excel loaded! You can now generate reports.");
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    // Modal logic
+    function openModal() {
+      const modal = document.getElementById("questionModal");
+      const container = document.getElementById("questionInputs");
+      container.innerHTML = "";
+      questions.forEach((q, i) => {
+        const input = document.createElement("input");
+        input.type = "text";
+        input.value = q;
+        input.dataset.index = i;
+        container.appendChild(input);
+      });
+      modal.style.display = "flex";
+    }
+
+    function closeModal() {
+      document.getElementById("questionModal").style.display = "none";
+    }
+
+    function addQuestion() {
+      const container = document.getElementById("questionInputs");
+      const input = document.createElement("input");
+      input.type = "text";
+      input.placeholder = "Enter new question";
+      container.appendChild(input);
+    }
+
+    function saveQuestions() {
+      const inputs = document.querySelectorAll("#questionInputs input");
+      questions = [];
+      inputs.forEach(inp => {
+        if (inp.value.trim() !== "") questions.push(inp.value.trim());
+      });
+      renderQuestionList();
+      closeModal();
+    }
+
+    function renderQuestionList() {
+      const list = document.getElementById("questionList");
+      list.innerHTML = "";
+      questions.forEach(q => {
+        const li = document.createElement("li");
+        li.textContent = q;
+        list.appendChild(li);
+      });
+    }
+    renderQuestionList(); // initial render
+
+    function generateReports() {
+      if (!excelRows.length) {
+        alert("Please upload an Excel file first.");
+        return;
+      }
+
+      const headers = Object.keys(excelRows[0]);
+
+      // detect trainer groups (drop unwanted cols including 'Last modified time')
+      const trainerGroups = {};
+      headers.forEach(h => {
+        const hl = h.toLowerCase();
+        if (
+          hl.includes("last modified") ||
+          hl.includes("what went") ||
+          hl.includes("what need") ||
+          hl.includes("attention") ||
+          hl.includes("completion") ||
+          hl.includes("start") ||
+          hl.includes("id") ||
+          hl.includes("email") ||
+          hl.includes("name")
+        ) return;
+
+        const base = h.replace(/[0-9]+$/, "").trim(); // e.g. Hari2 -> Hari
+        if (!trainerGroups[base]) trainerGroups[base] = [];
+        trainerGroups[base].push(h);
+      });
+
+      const API_KEY = "AIzaSyAIjhn5kPPAYRjPrhZy2f8moH6ozfUaR2o";
+
+      // The API endpoint
+      const API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${API_KEY}`;
+
+
+      const commentWellKey = headers.find(k => k.toLowerCase().includes("what went"));
+      const commentImproveKey = headers.find(k => k.toLowerCase().includes("what needs") || k.toLowerCase().includes("what need"));
+
+
+      const commentsWell = commentWellKey ? excelRows.map(r => r[commentWellKey]).filter(c => c) : [];
+      const commentsImprove = commentImproveKey ? excelRows.map(r => r[commentImproveKey]).filter(c => c) : [];
+
+      // async function summarizeFeedback() {
+      //   try {
+      //     // 1. Format the data into a single string
+      //     const feedbackText = data.map(item => item.feedback).join(" ");
+
+      //     // 2. Construct the request body with a clear prompt
+      //     const prompt = `Summarize the following feedback points into 3 to 4 key bullet points:\n\n${feedbackText}`;
+
+      //     const requestBody = {
+      //       contents: [
+      //         {
+      //           parts: [
+      //             { text: prompt }
+      //           ]
+      //         }
+      //       ]
+      //     };
+
+      //     // 3. Send the POST request
+      //     const response = await fetch(API_ENDPOINT, {
+      //       method: 'POST',
+      //       headers: {
+      //         'Content-Type': 'application/json',
+      //       },
+      //       body: JSON.stringify(requestBody),
+      //     });
+
+      //     if (!response.ok) {
+      //       const errorText = await response.text();
+      //       throw new Error(`API request failed with status ${response.status}: ${errorText}`);
+      //     }
+
+      //     // 4. Parse the response
+      //     const responseData = await response.json();
+      //     const summary = responseData.candidates[0].content.parts[0].text;
+
+      //     console.log("Here is the summary:");
+      //     console.log(summary);
+
+      //   } catch (error) {
+      //     console.error("An error occurred while summarizing the feedback:", error);
+      //   }
+      // }
+
+      
+      // summarizeFeedback();
+
+      const output = document.getElementById("output");
+      output.innerHTML = "";
+
+      Object.entries(trainerGroups).forEach(([trainer, cols]) => {
+        const ratings = {};
+        cols.forEach((c, i) => ratings[i] = { "Excellent": 0, "Very Good": 0, "Good": 0, "Average": 0, "Very Poor": 0 });
+
+        let totalScore = 0, scoreCount = 0;
+        excelRows.forEach(r => {
+          cols.forEach((c, i) => {
+            const val = r[c];
+            const norm = NORMALIZE(val);
+            let label = null;
+            if (norm.includes("excellent")) label = "Excellent";
+            else if (norm.includes("very good")) label = "Very Good";
+            else if (norm === "good") label = "Good";
+            else if (norm === "average") label = "Average";
+            else if (norm.includes("poor")) label = "Very Poor";
+            if (label) ratings[i][label]++;
+
+            if (ratingMap[norm] !== undefined) {
+              totalScore += ratingMap[norm];
+              scoreCount++;
+            }
+          });
+        });
+
+        const overall = scoreCount ? (totalScore / scoreCount).toFixed(2) : "N/A";
+
+        const div = document.createElement("div");
+        div.className = "report";
+        div.innerHTML = `
+          <h2>ILP - Tech Fundamentals Feedback — ${trainer}</h2>
+          <div class="meta">
+            <div><strong>Batch Name:</strong> ILP 2024-25 Batch</div>
+            <div><strong>Total Trainee Count:</strong> ${excelRows.length}</div>
+            <div><strong>Trainer Name:</strong> ${trainer}</div>
+            <div><strong>Overall Program Rating (out of 5):</strong> ${overall}</div>
+          </div>
+          <table>
+            <tr>
+              <th>Category</th>
+              ${ratingLabels.map(l => `<th>${l}</th>`).join("")}
+              <th>Total</th>
+            </tr>
+            ${cols.map((c, i) => `
+              <tr>
+                <td style="text-align:left">${questions[i] || ("Category " + (i + 1))}</td>
+                <td>${ratings[i]["Excellent"]}</td>
+                <td>${ratings[i]["Very Good"]}</td>
+                <td>${ratings[i]["Good"]}</td>
+                <td>${ratings[i]["Average"]}</td>
+                <td>${ratings[i]["Very Poor"]}</td>
+                <td>${excelRows.length}</td>
+              </tr>
+            `).join("")}
+          </table>
+          <div class="section">
+            <h3>What went well / things you most liked</h3>
+            <ul>${commentsWell.map(c => `<li>${c}</li>`).join("")}</ul>
+          </div>
+          <div class="section">
+            <h3>What needs improvement</h3>
+            <ul>${commentsImprove.map(c => `<li>${c}</li>`).join("")}</ul>
+          </div>
+        `;
+        output.appendChild(div);
+      });
+
+      // switch to report page
+      document.getElementById("dashboardPage").classList.add("hidden");
+      document.getElementById("reportPage").classList.remove("hidden");
+    }
+
+    function goBack() {
+      document.getElementById("reportPage").classList.add("hidden");
+      document.getElementById("dashboardPage").classList.remove("hidden");
+    }
+  </script>
+</body>
+
+</html>

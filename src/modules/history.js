@@ -25,7 +25,7 @@ let filteredHistory = [];
 // Auth check
 onAuthStateChanged(auth, (user) => {
   if (!user) {
-    window.location.href = "../pages/login.html";
+    window.location.href = "../pages/index.html";
   } else {
     loadHistory();
   }
@@ -35,7 +35,7 @@ onAuthStateChanged(auth, (user) => {
 document.getElementById("logoutBtn").addEventListener("click", () => {
   signOut(auth)
     .then(() => {
-      window.location.href = "../pages/login.html";
+      window.location.href = "../pages/index.html";
     })
     .catch((error) => {
       console.error("Error signing out:", error);
