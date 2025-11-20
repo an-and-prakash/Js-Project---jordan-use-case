@@ -317,10 +317,10 @@ export function copyEmailsToClipboard(trainerName) {
 async function summarizeWithGemini(label, comments) {
   if (!comments.length) return [`No ${label} comments available.`];
 
-  const API_KEY = window._env_.geminiApiKey;
-  const ENDPOINT = window._env_.geminiEndpoint;
-  // const API_KEY = " window._env_.geminiApiKey";
-  // const ENDPOINT = "window._env_.geminiEndpoint";
+  // const API_KEY = window._env_.geminiApiKey;
+  // const ENDPOINT = window._env_.geminiEndpoint;
+  const API_KEY = " window._env_.geminiApiKey";
+  const ENDPOINT = "window._env_.geminiEndpoint";
   const feedbackText = comments.join("\n");
   const prompt = `Summarize the following trainee feedback about "${label}" into 3-4 clear bullet points. Return only bullet points:\n\n${feedbackText}`;
 
@@ -698,16 +698,16 @@ function renderPieChart(safeTrainer, ratings) {
 
   const enhancedColors = {
     pie: [
-      "#1E3A8A", // Excellent - Deep Navy
-      "#3B82F6", // Very Good - Bright Blue
-      "#10B981", // Good - Emerald Green
-      "#F59E0B", // Average - Amber
+      "#10B981", // Excellent - Emerald Green
+      "#34D399", // Very Good - Light Green
+      "#F59E0B", // Good - Amber/Orange
+      "#FB923C", // Average - Light Orange
       "#EF4444", // Very Poor - Red
     ],
   };
 
   new Chart(document.getElementById("pie_" + safeTrainer), {
-    type: "pie",
+    type: "doughnut",
     plugins: [ChartDataLabels],
     data: {
       labels: Object.keys(pieData),
@@ -715,46 +715,46 @@ function renderPieChart(safeTrainer, ratings) {
         {
           data: Object.values(pieData),
           backgroundColor: enhancedColors.pie,
-          borderWidth: 3,
-          borderColor: "#ffffff",
-          hoverOffset: 15,
-          hoverBorderWidth: 4,
+          borderWidth: 0,
+          hoverOffset: 8,
         },
       ],
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      cutout: "65%",
       plugins: {
         title: {
           display: true,
           text: "Overall Rating Distribution",
           font: {
-            size: 14,
-            weight: "bold",
+            size: 13,
+            weight: "normal",
             family: "Segoe UI",
           },
-          padding: { bottom: 20, top: 10 },
-          color: "#1f2937",
+          padding: { bottom: 15, top: 5 },
+          color: "#374151",
+          align: "start",
         },
         legend: {
           position: "bottom",
           labels: {
-            padding: 16,
-            font: { size: 14, family: "'Segoe UI', Arial, sans-serif" },
-            color: "#374151",
+            padding: 12,
+            font: { size: 12, family: "'Segoe UI', Arial, sans-serif" },
+            color: "#6B7280",
             usePointStyle: true,
-            pointStyle: "circle",
+            pointStyle: "rect",
             boxWidth: 12,
             boxHeight: 12,
           },
         },
         tooltip: {
           backgroundColor: "rgba(0, 0, 0, 0.8)",
-          padding: 12,
-          titleFont: { size: 14, weight: "bold" },
-          bodyFont: { size: 13 },
-          cornerRadius: 8,
+          padding: 10,
+          titleFont: { size: 13, weight: "bold" },
+          bodyFont: { size: 12 },
+          cornerRadius: 6,
           displayColors: true,
           callbacks: {
             label: function (context) {
@@ -768,16 +768,14 @@ function renderPieChart(safeTrainer, ratings) {
           color: "#ffffff",
           font: {
             weight: "bold",
-            size: 13,
+            size: 12,
             family: "'Segoe UI', Arial, sans-serif",
           },
-          textStrokeColor: "rgba(0, 0, 0, 0.3)",
-          textStrokeWidth: 2,
           formatter: (value, ctx) => {
             if (value === 0) return "";
             const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
             const percentage = ((value / total) * 100).toFixed(1);
-            return `${value}\n${percentage}%`;
+            return `${percentage}%\n${value}`;
           },
         },
       },
@@ -809,13 +807,6 @@ function renderBarChart(safeTrainer, columns) {
     barCanvas.style.height = "100%";
   }
 
-  const ctx = barCanvas.getContext("2d");
-
-  // Smooth vertical gradient
-  const gradient = ctx.createLinearGradient(0, 0, 0, 450);
-  gradient.addColorStop(0, "#1d4ed8"); // deep blue
-  gradient.addColorStop(1, "#3b82f6"); // light blue
-
   new Chart(barCanvas, {
     type: "bar",
     plugins: [ChartDataLabels],
@@ -823,23 +814,16 @@ function renderBarChart(safeTrainer, columns) {
       labels: barLabels,
       datasets: [
         {
-          label: "Average Rating",
+          label: "Average Rating (out of 5)",
           data: barData,
-          backgroundColor: gradient,
-
+          backgroundColor: "#3B82F6",
           
-          barThickness: 70,
-          maxBarThickness: 80,
-          barPercentage: 0.9,
+          barThickness: 50,
+          maxBarThickness: 60,
+          barPercentage: 0.7,
           
-
-          borderRadius: {
-            topLeft: 10,
-            topRight: 10,
-            bottomLeft: 0,
-            bottomRight: 0,
-          },
-          borderSkipped: "bottom",
+          borderRadius: 0,
+          borderSkipped: false,
         },
       ],
     },
@@ -847,45 +831,37 @@ function renderBarChart(safeTrainer, columns) {
       responsive: true,
       maintainAspectRatio: false,
 
-      layout: { padding: { top: 25, right: 30, left: 15, bottom: 20 } },
+      layout: { padding: { top: 40, right: 20, left: 10, bottom: 10 } },
 
       scales: {
         y: {
           beginAtZero: true,
-          suggestedMax: 5,
+          max: 5,
           ticks: {
             stepSize: 1,
-            font: { size: 13, family: "'Segoe UI', Arial" },
-            color: "#4b5563",
-            padding: 8,
+            font: { size: 11, family: "'Segoe UI', Arial" },
+            color: "#6B7280",
+            padding: 5,
           },
           grid: {
-            color: "rgba(0,0,0,0.05)",
+            color: "rgba(0,0,0,0.06)",
             drawBorder: false,
-            lineWidth: 1.2,
+            lineWidth: 1,
           },
-          title: {
-            display: true,
-            text: "Rating (0–5)",
-            font: { size: 14, weight: "bold", family: "'Segoe UI', Arial" },
-            color: "#374151",
-            padding: { bottom: 10 },
+          border: {
+            display: false,
           },
         },
 
         x: {
           grid: { display: false },
           ticks: {
-            font: { size: 13, family: "'Segoe UI', Arial" },
-            color: "#4b5563",
-            padding: 8,
+            font: { size: 11, family: "'Segoe UI', Arial" },
+            color: "#6B7280",
+            padding: 5,
           },
-          title: {
-            display: true,
-            text: "Questions",
-            font: { size: 14, weight: "bold", family: "'Segoe UI', Arial" },
-            color: "#374151",
-            padding: { top: 10 },
+          border: {
+            display: false,
           },
         },
       },
@@ -893,36 +869,47 @@ function renderBarChart(safeTrainer, columns) {
       plugins: {
         title: {
           display: true,
-          text: "Average Rating Per Question",
-          font: { size: 20, weight: "bold", family: "'Segoe UI', Arial" },
-          color: "#1f2937",
-          padding: { bottom: 30 },
+          text: "Question-wise Ratings",
+          font: { size: 13, weight: "normal", family: "'Segoe UI', Arial" },
+          color: "#374151",
+          padding: { bottom: 20, top: 0 },
+          align: "start",
         },
 
-        legend: { display: false },
+        legend: {
+          display: true,
+          position: "top",
+          align: "end",
+          labels: {
+            font: { size: 11, family: "'Segoe UI', Arial" },
+            color: "#6B7280",
+            usePointStyle: true,
+            pointStyle: "rect",
+            boxWidth: 12,
+            boxHeight: 12,
+            padding: 10,
+          },
+        },
 
         tooltip: {
           backgroundColor: "rgba(0,0,0,0.85)",
-          bodyFont: { size: 14 },
-          titleFont: { size: 15, weight: "bold" },
-          cornerRadius: 8,
+          bodyFont: { size: 12 },
+          titleFont: { size: 13, weight: "bold" },
+          cornerRadius: 6,
           displayColors: false,
-          padding: 12,
+          padding: 10,
           callbacks: {
-            title: (ctx) => `Question ${ctx[0].dataIndex + 1}`,
+            title: (ctx) => `${ctx[0].label}`,
             label: (ctx) => `Average: ${parseFloat(ctx.parsed.y).toFixed(2)}`,
           },
         },
 
         datalabels: {
           anchor: "end",
-          align: "end",
-          offset: 10,
-          font: { size: 13, weight: "bold", family: "'Segoe UI', Arial" },
+          align: "top",
+          offset: 4,
+          font: { size: 11, weight: "bold", family: "'Segoe UI', Arial" },
           color: "#1f2937",
-          backgroundColor: "rgba(255,255,255,0.9)",
-          borderRadius: 5,
-          padding: { left: 6, right: 6, top: 4, bottom: 4 },
           formatter: (v) => parseFloat(v).toFixed(2),
         },
       },
