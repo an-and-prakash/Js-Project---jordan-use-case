@@ -38,7 +38,7 @@ onAuthStateChanged(auth, (user) => {
   }
 });
 
-document.getElementById("logoutBtn")?.addEventListener("click", () => {
+document.getElementById("logoutBtno")?.addEventListener("click", () => {
   signOut(auth)
     .then(() => {
       console.log("User signed out");

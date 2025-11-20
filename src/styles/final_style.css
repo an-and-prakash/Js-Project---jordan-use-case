@@ -456,6 +456,7 @@ tr:hover {
     padding: 20px;
   }
 
+  
   .logout-btn {
     position: absolute;
     top: 20px;
@@ -472,7 +473,22 @@ tr:hover {
     transition: all 0.3s ease;
     letter-spacing: 0.5px;
   }
-
+  .history-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    transition: all 0.3s ease;
+    letter-spacing: 0.5px;
+  }
   .logout-btn:hover {
     background: linear-gradient(135deg, #c0392b, #a93226);
     transform: translateY(-2px) scale(1.02);
@@ -742,4 +758,21 @@ body {
 }
 .chart-card {
   text-align: left !important;
+}
+.history {
+  border: none;
+  background: #007bff;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.history i {
+  margin: 0;
+}
+
+.history:hover {
+  background: #0056b3;
 }
