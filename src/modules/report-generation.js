@@ -58,11 +58,11 @@ function clearAllInputsAndData() {
   const trainingTopicInput = document.getElementById("trainingTopic");
   const batchNameInput = document.getElementById("batchName");
   const trainerNameSelect = document.getElementById("trainerNameSelect");
-  
+
   if (trainingTopicInput) trainingTopicInput.value = "";
   if (batchNameInput) batchNameInput.value = "";
   if (trainerNameSelect) trainerNameSelect.value = "";
-  
+
   // Clear previous data
   excelRows = [];
   fileType = null;
@@ -70,21 +70,21 @@ function clearAllInputsAndData() {
   studentsWithVeryPoorRatings = {};
   trainingTopic = "";
   questions.length = 0;
-  
+
   // Clear UI displays
   const fileInfoDiv = document.getElementById("fileInfoDisplay");
   const analysisDiv = document.getElementById("fileAnalysis");
   const type1Section = document.getElementById("type1Section");
   const type2Section = document.getElementById("type2Section");
-  
+
   if (fileInfoDiv) fileInfoDiv.innerHTML = "";
   if (analysisDiv) analysisDiv.classList.add("hidden");
   if (type1Section) type1Section.classList.add("hidden");
   if (type2Section) type2Section.classList.add("hidden");
-  
+
   // Clear any existing reports
   clearExistingReportUI();
-  
+
   // Reset to dashboard page if on report page
   const reportPage = document.getElementById("reportPage");
   const dashboardPage = document.getElementById("dashboardPage");
@@ -227,8 +227,16 @@ function extractQuestionsFromHeaders(headers, analysis) {
       }
     });
   } else {
-    const ratingHeaders = headers.slice(8, headers.length - 3);
-    questions.push(...ratingHeaders.map((h) => h.trim()).filter((q) => q));
+    // ---------- NEW LOGIC FOR SINGLE TRAINER ----------
+    const ratingColumns = detectRatingColumns(excelRows);
+
+    // Extract questions based on headers of rating columns
+    ratingColumns.forEach((col) => {
+      const clean = col.trim();
+      if (clean && !questions.includes(clean)) {
+        questions.push(clean);
+      }
+    });
   }
 
   console.log("Extracted Questions from Excel:", questions);
@@ -366,7 +374,7 @@ export function copyEmailsToClipboard(trainerName) {
 async function summarizeWithGemini(label, comments) {
   if (!comments.length) return [`No ${label} comments available.`];
 
-  const API_KEY = "AIzaSyAIjhn5kPPAYRjPrhZy2f8moH6ozfUaR2o";
+  const API_KEY = window._env_.geminiApiKey;
   const ENDPOINT =
     "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
   const feedbackText = comments.join("\n");
@@ -510,6 +518,14 @@ function detectRatingColumns(rows) {
   const ratingColumns = [];
 
   cols.forEach((col) => {
+    const headerText = NORMALIZE(col);
+
+    if (
+      headerText.includes("attention was paid to details like arrangements")
+    ) {
+      return; // same as continue
+    }
+
     let hasRating = false;
 
     for (let i = 0; i < rows.length; i++) {
