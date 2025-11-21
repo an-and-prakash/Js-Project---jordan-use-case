@@ -19,8 +19,12 @@
     <header class="header">
       <h1>Trainer Feedback Report Generator</h1>
       <div class="header-right">
-        <button id="logoutBtn" class="logout-btn" onclick="location.href='history.html'">
-          <i class="fa-solid fa-clock-rotate-left"></i> History
+        <button
+          id="logoutBtn"
+          class="logout-btn"
+          onclick="location.href='history.html'"
+        >
+          <i class="fa-solid fa-clock-rotate-left"></i> Saved Reports
         </button>
         <button id="logoutBtno" class="logout-btn">
           <i class="fa-solid fa-sign-out-alt"></i>Sign Out
@@ -73,7 +77,21 @@
                   type="text"
                   id="trainingTopic"
                   placeholder="e.g., Tech Fundamentals, JavaScript Basics, etc."
-                  value="Tech Fundamentals"
+                  
+                />
+              </div>
+            </div>
+
+            <!-- Batch Name Input -->
+            <div class="batch-input-section">
+              <h3><i class="fa-solid fa-users"></i> Batch Name</h3>
+              <p class="subtext">Enter the batch name (required)</p>
+              <div class="form-group">
+                <label for="batchName">Batch Name:</label>
+                <input
+                  type="text"
+                  id="batchName"
+                  placeholder="e.g., ILP Jan-2025 Batch"
                 />
               </div>
             </div>

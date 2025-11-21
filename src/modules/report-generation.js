@@ -9,7 +9,7 @@ export let excelRows = [];
 export let fileType = null;
 export let detectedTrainers = [];
 export let studentsWithVeryPoorRatings = {};
-export let trainingTopic = "Tech Fundamentals";
+export let trainingTopic = "";
 
 // ===================================
 // CONSTANTS & UTILITIES
@@ -213,14 +213,17 @@ function displayFileAnalysis(analysis, columnCount, rowCount) {
     infoHTML += `<p><strong>Trainers:</strong> ${analysis.trainers.join(
       ", "
     )}</p>`;
-    type1Section?.classList.remove("hidden");
-  } else {
-    infoHTML += `<p><strong>Note:</strong> Please specify trainer name below.</p>`;
-    type2Section?.classList.remove("hidden");
   }
 
   if (fileInfoDiv) fileInfoDiv.innerHTML = infoHTML;
   analysisDiv?.classList.remove("hidden");
+
+  // Show appropriate section based on file type
+  if (isMultiTrainer) {
+    type1Section?.classList.remove("hidden");
+  } else {
+    type2Section?.classList.remove("hidden");
+  }
 
   showMessage(
     "success",
@@ -317,10 +320,9 @@ export function copyEmailsToClipboard(trainerName) {
 async function summarizeWithGemini(label, comments) {
   if (!comments.length) return [`No ${label} comments available.`];
 
-  // const API_KEY = window._env_.geminiApiKey;
-  // const ENDPOINT = window._env_.geminiEndpoint;
-  const API_KEY = " window._env_.geminiApiKey";
-  const ENDPOINT = "window._env_.geminiEndpoint";
+  const API_KEY = "AIzaSyAIjhn5kPPAYRjPrhZy2f8moH6ozfUaR2o";
+  const ENDPOINT =
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
   const feedbackText = comments.join("\n");
   const prompt = `Summarize the following trainee feedback about "${label}" into 3-4 clear bullet points. Return only bullet points:\n\n${feedbackText}`;
 
@@ -376,7 +378,7 @@ async function getCommentSummaries(headers) {
 }
 
 // ===================================
-// REPORT GENERATION
+// REPORT GENERATION - WITH VALIDATION
 // ===================================
 
 export function generateReports() {
@@ -385,17 +387,59 @@ export function generateReports() {
     return;
   }
 
-  trainingTopic =
-    document.getElementById("trainingTopic")?.value || "Tech Fundamentals";
+  // Validate Training Topic
+  trainingTopic = document.getElementById("trainingTopic")?.value.trim();
+  if (!trainingTopic) {
+    showMessage(
+      "error",
+      "Please enter Training Topic before generating report."
+    );
+    const topicInput = document.getElementById("trainingTopic");
+    if (topicInput) {
+      topicInput.style.borderColor = "#ef4444";
+      topicInput.focus();
+      setTimeout(() => {
+        topicInput.style.borderColor = "";
+      }, 3000);
+    }
+    return;
+  }
+
+  // Validate Batch Name
+  const batchName = document.getElementById("batchName")?.value.trim();
+  if (!batchName) {
+    showMessage("error", "Please enter Batch Name before generating report.");
+    const batchInput = document.getElementById("batchName");
+    if (batchInput) {
+      batchInput.style.borderColor = "#ef4444";
+      batchInput.focus();
+      setTimeout(() => {
+        batchInput.style.borderColor = "";
+      }, 3000);
+    }
+    return;
+  }
+  window.batchName = batchName;
+
   studentsWithVeryPoorRatings = {};
 
   if (fileType === "single_trainer") {
-    const trainerName = document.getElementById("trainerNameSelect")?.value;
+    const trainerName = document
+      .getElementById("trainerNameSelect")
+      ?.value.trim();
     if (!trainerName) {
       showMessage(
         "error",
-        "Please enter a trainer name for single trainer feedback."
+        "Please select a Trainer Name before generating report."
       );
+      const trainerSelect = document.getElementById("trainerNameSelect");
+      if (trainerSelect) {
+        trainerSelect.style.borderColor = "#ef4444";
+        trainerSelect.focus();
+        setTimeout(() => {
+          trainerSelect.style.borderColor = "";
+        }, 3000);
+      }
       return;
     }
     generateSingleTrainerReport(trainerName);
@@ -404,13 +448,49 @@ export function generateReports() {
   }
 }
 
+function detectRatingColumns(rows) {
+  const VALID_RATINGS = [
+    "excellent",
+    "very good",
+    "good",
+    "average",
+    "poor",
+    "very poor",
+  ];
+
+  if (!rows || rows.length === 0) return [];
+
+  const cols = Object.keys(rows[0]); // column names
+  const ratingColumns = [];
+
+  cols.forEach((col) => {
+    let hasRating = false;
+
+    for (let i = 0; i < rows.length; i++) {
+      const value = NORMALIZE(rows[i][col]);
+
+      if (VALID_RATINGS.includes(value)) {
+        hasRating = true;
+        break;
+      }
+    }
+
+    if (hasRating) {
+      ratingColumns.push(col);
+    }
+  });
+
+  return ratingColumns;
+}
+
 async function generateSingleTrainerReport(trainerName) {
   showLoading("Generating Report...");
 
   clearExistingReportUI();
 
   const headers = Object.keys(excelRows[0]);
-  const ratingColumns = headers.slice(8, headers.length - 3);
+  // const ratingColumns = headers.slice(8, headers.length - 3);
+  const ratingColumns = detectRatingColumns(excelRows);
 
   studentsWithVeryPoorRatings[trainerName] = getStudentsWithVeryPoorRating(
     trainerName,
@@ -575,7 +655,7 @@ function buildReportHTML(
     <h2>ILP - ${trainingTopic} Feedback — ${trainerName}</h2>
 
     <div class="meta">
-      <div><strong>Batch Name:</strong> ILP 2024-25 Batch</div>
+      <div><strong>Batch Name:</strong> ${window.batchName}</div>
       <div><strong>Total Trainee Count:</strong> ${excelRows.length}</div>
       <div><strong>Trainer Name:</strong> ${trainerName}</div>
       <div><strong>Overall Program Rating (out of 5):</strong> <span class="${overallClass}">${overall}</span></div>
@@ -728,11 +808,7 @@ function renderPieChart(safeTrainer, ratings) {
         title: {
           display: true,
           text: "Overall Rating Distribution",
-          font: {
-            size: 13,
-            weight: "normal",
-            family: "Segoe UI",
-          },
+          font: { size: 13, weight: "normal", family: "Segoe UI" },
           padding: { bottom: 15, top: 5 },
           color: "#374151",
           align: "start",
@@ -817,11 +893,9 @@ function renderBarChart(safeTrainer, columns) {
           label: "Average Rating (out of 5)",
           data: barData,
           backgroundColor: "#3B82F6",
-          
           barThickness: 50,
           maxBarThickness: 60,
           barPercentage: 0.7,
-          
           borderRadius: 0,
           borderSkipped: false,
         },
@@ -830,9 +904,7 @@ function renderBarChart(safeTrainer, columns) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-
       layout: { padding: { top: 40, right: 20, left: 10, bottom: 10 } },
-
       scales: {
         y: {
           beginAtZero: true,
@@ -848,11 +920,8 @@ function renderBarChart(safeTrainer, columns) {
             drawBorder: false,
             lineWidth: 1,
           },
-          border: {
-            display: false,
-          },
+          border: { display: false },
         },
-
         x: {
           grid: { display: false },
           ticks: {
@@ -860,12 +929,9 @@ function renderBarChart(safeTrainer, columns) {
             color: "#6B7280",
             padding: 5,
           },
-          border: {
-            display: false,
-          },
+          border: { display: false },
         },
       },
-
       plugins: {
         title: {
           display: true,
@@ -875,7 +941,6 @@ function renderBarChart(safeTrainer, columns) {
           padding: { bottom: 20, top: 0 },
           align: "start",
         },
-
         legend: {
           display: true,
           position: "top",
@@ -890,7 +955,6 @@ function renderBarChart(safeTrainer, columns) {
             padding: 10,
           },
         },
-
         tooltip: {
           backgroundColor: "rgba(0,0,0,0.85)",
           bodyFont: { size: 12 },
@@ -903,7 +967,6 @@ function renderBarChart(safeTrainer, columns) {
             label: (ctx) => `Average: ${parseFloat(ctx.parsed.y).toFixed(2)}`,
           },
         },
-
         datalabels: {
           anchor: "end",
           align: "top",
@@ -1210,6 +1273,3 @@ window.createTrainerFilterDropdown = createTrainerFilterDropdown;
 window.updateBulkActionsVisibility = updateBulkActionsVisibility;
 window.prepareReportData = prepareReportData;
 window.addSaveButtonToReportPage = addSaveButtonToReportPage;
-window.excelRows = excelRows;
-window.fileType = fileType;
-window.trainingTopic = trainingTopic;
