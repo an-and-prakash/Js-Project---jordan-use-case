@@ -52,9 +52,55 @@ document
   .getElementById("fileInput")
   ?.addEventListener("change", handleFile, false);
 
+// Add this new function after your utility functions
+function clearAllInputsAndData() {
+  // Clear input fields
+  const trainingTopicInput = document.getElementById("trainingTopic");
+  const batchNameInput = document.getElementById("batchName");
+  const trainerNameSelect = document.getElementById("trainerNameSelect");
+  
+  if (trainingTopicInput) trainingTopicInput.value = "";
+  if (batchNameInput) batchNameInput.value = "";
+  if (trainerNameSelect) trainerNameSelect.value = "";
+  
+  // Clear previous data
+  excelRows = [];
+  fileType = null;
+  detectedTrainers = [];
+  studentsWithVeryPoorRatings = {};
+  trainingTopic = "";
+  questions.length = 0;
+  
+  // Clear UI displays
+  const fileInfoDiv = document.getElementById("fileInfoDisplay");
+  const analysisDiv = document.getElementById("fileAnalysis");
+  const type1Section = document.getElementById("type1Section");
+  const type2Section = document.getElementById("type2Section");
+  
+  if (fileInfoDiv) fileInfoDiv.innerHTML = "";
+  if (analysisDiv) analysisDiv.classList.add("hidden");
+  if (type1Section) type1Section.classList.add("hidden");
+  if (type2Section) type2Section.classList.add("hidden");
+  
+  // Clear any existing reports
+  clearExistingReportUI();
+  
+  // Reset to dashboard page if on report page
+  const reportPage = document.getElementById("reportPage");
+  const dashboardPage = document.getElementById("dashboardPage");
+  if (reportPage && !reportPage.classList.contains("hidden")) {
+    reportPage.classList.add("hidden");
+    if (dashboardPage) dashboardPage.classList.remove("hidden");
+  }
+}
+
+// Update your handleFile function
 function handleFile(e) {
   const file = e.target.files[0];
   if (!file) return;
+
+  // Clear everything when new file is uploaded
+  clearAllInputsAndData();
 
   const reader = new FileReader();
   reader.onload = function (event) {
@@ -508,6 +554,7 @@ async function generateSingleTrainerReport(trainerName) {
 
 async function generateMultipleTrainerReports() {
   showLoading("Generating Report...");
+  clearExistingReportUI();
 
   const headers = Object.keys(excelRows[0]);
   const trainerDataMap = buildTrainerDataMap(headers);
