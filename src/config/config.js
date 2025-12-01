@@ -10,7 +10,7 @@ window._env_ = {
   measurementId: "G-0SCRHVW7Y1",
 
   // Gemini API key
-  geminiApiKey: "AIzaSyAIjhn5kPPAYRjPrhZy2f8moH6ozfUaR2o",
+  geminiApiKey: "AIzaSyBgX7IxyvLwwYLpni93OzqnK1KC45Ca6TY",
   
   // Gemini endpoint
   geminiEndpoint:

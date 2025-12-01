@@ -374,6 +374,7 @@ export function copyEmailsToClipboard(trainerName) {
 async function summarizeWithGemini(label, comments) {
   if (!comments.length) return [`No ${label} comments available.`];
 
+  console.log("hiiiiiiiiiii",window._env_.geminiApiKey)
   const API_KEY = window._env_.geminiApiKey;
   const ENDPOINT =
     "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";

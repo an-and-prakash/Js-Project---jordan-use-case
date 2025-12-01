@@ -1,0 +1,10 @@
+[build]
+  # If you have a build process, specify it here
+  # command = "npm run build"
+  # publish = "dist"
+  
+  # For simple HTML/CSS/JS projects:
+  publish = "."
+
+[functions]
+  directory = "netlify/functions"
